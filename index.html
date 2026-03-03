@@ -7,114 +7,108 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bangers&family=IBM+Plex+Mono:wght@400;700&display=swap');
-
   *{margin:0;padding:0;box-sizing:border-box;}
-
   :root{
-    --bg:#111118;
-    --board-light:#EEEED2;
-    --board-dark:#769656;
-    --accent:#ff2e63;
-    --accent2:#08d9d6;
-    --text:#eaeaea;
-    --bubble-bg:#1c1c2e;
+    --bg:#111118;--board-light:#EEEED2;--board-dark:#769656;
+    --accent:#ff2e63;--accent2:#08d9d6;--text:#eaeaea;--bubble-bg:#1c1c2e;
   }
-
   body{
     background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;
     min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;
     overflow-x:hidden;
-    background-image:radial-gradient(ellipse at 20% 50%,rgba(255,46,99,0.06) 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,rgba(8,217,214,0.06) 0%,transparent 50%);
+    background-image:radial-gradient(ellipse at 20% 50%,rgba(255,46,99,.06) 0%,transparent 50%),radial-gradient(ellipse at 80% 20%,rgba(8,217,214,.06) 0%,transparent 50%);
   }
-
   h1{
     font-family:'Bangers',cursive;font-size:clamp(1.8rem,5vw,3rem);letter-spacing:3px;margin:12px 0 2px;
     background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;
   }
-  .subtitle{font-size:0.7rem;color:#666;margin-bottom:8px;letter-spacing:2px;text-transform:uppercase;}
-
-  .difficulty-bar{display:flex;gap:8px;margin-bottom:10px;}
+  .subtitle{font-size:.7rem;color:#666;margin-bottom:4px;letter-spacing:2px;text-transform:uppercase;}
+  .record-bar{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-family:'Bangers',cursive;font-size:.85rem;color:var(--accent2);letter-spacing:1px;}
+  .reset-btn{font-family:'IBM Plex Mono',monospace;font-size:.6rem;padding:2px 8px;border:1px solid #444;background:transparent;color:#666;border-radius:3px;cursor:pointer;transition:all .2s;}
+  .reset-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .difficulty-bar{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;justify-content:center;}
   .diff-btn{
-    font-family:'Bangers',cursive;font-size:0.85rem;letter-spacing:1px;padding:5px 14px;
-    border:2px solid #444;background:transparent;color:#888;border-radius:4px;cursor:pointer;transition:all 0.2s;
+    font-family:'Bangers',cursive;font-size:.85rem;letter-spacing:1px;padding:6px 16px;
+    border:2px solid #444;background:transparent;color:#888;border-radius:4px;cursor:pointer;transition:all .2s;
   }
-  .diff-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(255,46,99,0.1);}
+  .diff-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(255,46,99,.1);}
   .diff-btn:hover{border-color:var(--accent);color:var(--accent);}
-
-  .game-container{
-    display:flex;gap:16px;align-items:flex-start;justify-content:center;
-    padding:0 10px;width:100%;max-width:900px;
-  }
-
+  .status-bar{margin:6px 0;font-family:'Bangers',cursive;font-size:1.1rem;letter-spacing:1px;min-height:26px;color:var(--accent2);}
+  .game-container{display:flex;gap:16px;align-items:flex-start;justify-content:center;padding:0 10px;width:100%;max-width:1000px;}
+  .board-col{display:flex;flex-direction:column;gap:4px;flex-shrink:0;}
+  .captured-row{min-height:22px;padding:2px 4px;font-size:1.1rem;display:flex;align-items:center;gap:2px;flex-wrap:wrap;}
+  #captured-top .cap-pieces{color:#ccc;text-shadow:0 0 2px rgba(0,0,0,.5);}
+  #captured-bottom .cap-pieces{color:#999;text-shadow:0 0 2px rgba(255,255,255,.2);}
+  .mat-adv{color:var(--accent2);font-family:'Bangers',cursive;font-size:.8rem;margin-left:4px;}
   .board{
-    display:grid;
-    grid-template-columns:repeat(8,1fr);
-    grid-template-rows:repeat(8,1fr);
-    width:min(420px,88vw);
-    aspect-ratio:1/1;
-    min-height:0;
-    border:3px solid var(--accent);border-radius:4px;
-    box-shadow:0 0 25px rgba(255,46,99,0.15);
-    flex-shrink:0;
+    display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
+    width:min(420px,88vw);aspect-ratio:1/1;min-height:0;
+    border:3px solid var(--accent);border-radius:4px;box-shadow:0 0 25px rgba(255,46,99,.15);flex-shrink:0;
   }
-
   .square{
-    display:flex;align-items:center;justify-content:center;
-    font-size:min(42px,8.5vw);cursor:pointer;user-select:none;
-    position:relative;transition:background 0.12s;
-    min-width:0;min-height:0;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;font-size:min(42px,8.5vw);
+    cursor:pointer;user-select:none;position:relative;transition:background .12s;min-width:0;min-height:0;overflow:hidden;
   }
-  .square.light{background:var(--board-light);}
-  .square.dark{background:var(--board-dark);}
+  .square.light{background:var(--board-light);}.square.dark{background:var(--board-dark);}
   .square.selected{background:#f7ec7d !important;}
-  .square.legal-move::after{
-    content:'';width:30%;height:30%;background:rgba(0,0,0,0.2);border-radius:50%;position:absolute;
-  }
-  .square.legal-capture{background:rgba(255,46,99,0.5) !important;}
-  .square.last-light{background:#f7ec7d !important;}
-  .square.last-dark{background:#baca44 !important;}
-
-  .trash-panel{
-    flex:1;min-width:0;max-height:min(420px,88vw);overflow-y:auto;
-    display:flex;flex-direction:column;gap:8px;padding:6px;
-  }
+  .square.legal-move::after{content:'';width:30%;height:30%;background:rgba(0,0,0,.2);border-radius:50%;position:absolute;}
+  .square.legal-capture{background:rgba(255,46,99,.5) !important;}
+  .square.last-light{background:#f7ec7d !important;}.square.last-dark{background:#baca44 !important;}
+  .square.in-check{background:#e74c3c !important;animation:checkPulse 1s infinite;}
+  .square.checking-piece{box-shadow:inset 0 0 12px 4px rgba(231,76,60,.7);}
+  @keyframes checkPulse{0%,100%{background:#e74c3c}50%{background:#c0392b}}
+  .side-panel{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;max-height:min(480px,calc(88vw + 60px));}
+  .trash-panel{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding:6px;}
   .trash-bubble{
     background:var(--bubble-bg);border-left:3px solid var(--accent);border-radius:0 10px 10px 0;
-    padding:10px 14px;font-size:0.85rem;line-height:1.5;animation:slideIn 0.3s ease-out;
+    padding:10px 14px;font-size:.85rem;line-height:1.5;animation:slideIn .3s ease-out;
   }
-  .trash-bubble .cpu-label{
-    font-family:'Bangers',cursive;color:var(--accent);font-size:0.7rem;letter-spacing:2px;margin-bottom:3px;
-  }
+  .trash-bubble .cpu-label{font-family:'Bangers',cursive;color:var(--accent);font-size:.7rem;letter-spacing:2px;margin-bottom:3px;}
   @keyframes slideIn{from{opacity:0;transform:translateX(-15px)}to{opacity:1;transform:translateX(0)}}
-
-  .status-bar{margin:8px 0;font-family:'Bangers',cursive;font-size:1.1rem;letter-spacing:1px;min-height:26px;color:var(--accent2);}
-  .controls{display:flex;gap:10px;margin-bottom:15px;}
+  .move-history{
+    background:var(--bubble-bg);border-radius:4px;padding:8px 10px;font-size:.75rem;
+    line-height:1.8;max-height:120px;overflow-y:auto;color:#aaa;flex-shrink:0;
+  }
+  .move-num{color:#555;}.move-san{color:var(--text);cursor:default;}.move-pair{white-space:nowrap;}
+  .controls{display:flex;gap:8px;margin:10px 0 15px;flex-wrap:wrap;justify-content:center;}
   .ctrl-btn{
-    font-family:'Bangers',cursive;font-size:0.95rem;letter-spacing:1px;padding:6px 16px;
-    border:2px solid var(--accent);background:transparent;color:var(--accent);border-radius:4px;cursor:pointer;transition:all 0.2s;
+    font-family:'Bangers',cursive;font-size:.95rem;letter-spacing:1px;padding:6px 16px;
+    border:2px solid var(--accent);background:transparent;color:var(--accent);border-radius:4px;cursor:pointer;transition:all .2s;
   }
   .ctrl-btn:hover{background:var(--accent);color:var(--bg);}
-
   .thinking{color:#666;font-style:italic;animation:pulse 1s infinite;}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
   .game-over-overlay{
-    position:fixed;inset:0;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
-    align-items:center;justify-content:center;z-index:100;animation:fadeIn 0.4s;padding:20px;
-    overflow-y:auto;
+    position:fixed;inset:0;background:rgba(0,0,0,.92);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;z-index:100;animation:fadeIn .4s;padding:20px;overflow-y:auto;
   }
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   .game-over-overlay h2{font-family:'Bangers',cursive;font-size:clamp(2rem,6vw,3.5rem);color:var(--accent);margin-bottom:10px;text-align:center;}
-  .game-over-overlay .go-body{font-size:0.95rem;margin-bottom:20px;max-width:600px;text-align:center;line-height:1.8;padding:0 10px;white-space:pre-line;}
+  .game-over-overlay .go-body{font-size:.95rem;margin-bottom:20px;max-width:600px;text-align:center;line-height:1.8;padding:0 10px;white-space:pre-line;}
   .game-over-overlay button{
     font-family:'Bangers',cursive;font-size:1rem;padding:8px 24px;border:2px solid var(--accent);
-    background:transparent;color:var(--accent);border-radius:4px;cursor:pointer;transition:all 0.2s;
+    background:transparent;color:var(--accent);border-radius:4px;cursor:pointer;transition:all .2s;
   }
   .game-over-overlay button:hover{background:var(--accent);color:var(--bg);}
-
+  .promo-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:200;}
+  .promo-box{background:var(--bubble-bg);border:2px solid var(--accent);border-radius:8px;padding:20px;text-align:center;}
+  .promo-title{font-family:'Bangers',cursive;color:var(--accent);font-size:1.2rem;margin-bottom:15px;letter-spacing:2px;}
+  .promo-options{display:flex;gap:10px;justify-content:center;}
+  .promo-piece{
+    font-size:2.5rem;width:64px;height:64px;border:2px solid var(--accent);background:var(--bg);
+    color:#fff;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;
+  }
+  .promo-piece:hover{background:var(--accent);transform:scale(1.1);}
   @media(max-width:700px){
     .game-container{flex-direction:column;align-items:center;}
-    .trash-panel{max-height:200px;width:88vw;}
+    .board-col{width:calc(100vw - 20px);}
+    .board{width:100% !important;}
+    .side-panel{width:calc(100vw - 20px);max-height:none;}
+    .trash-panel{max-height:200px;}
+    .move-history{overflow-y:hidden;overflow-x:auto;white-space:nowrap;max-height:none;width:100%;}
+    .ctrl-btn{padding:10px 18px;font-size:1rem;}
+    .diff-btn{padding:8px 18px;font-size:.9rem;}
+    .promo-piece{width:56px;height:56px;font-size:2.2rem;}
   }
 </style>
 </head>
@@ -122,6 +116,11 @@
 
 <h1>&#x1F5D1;&#xFE0F; Diss Chess &#x265F;&#xFE0F;</h1>
 <p class="subtitle">&#x26A0;&#xFE0F; THE CPU HAS ABSOLUTELY NO FILTER &#x26A0;&#xFE0F;</p>
+
+<div class="record-bar">
+  <span id="stats-display"></span>
+  <button class="reset-btn" onclick="resetStats()">Reset Stats</button>
+</div>
 
 <div class="difficulty-bar">
   <button class="diff-btn active" onclick="setDiff(0)" id="diff-0">Beginner</button>
@@ -132,13 +131,22 @@
 <div class="status-bar" id="status">Your move, dipshit.</div>
 
 <div class="game-container">
-  <div class="board" id="board"></div>
-  <div class="trash-panel" id="trash-panel"></div>
+  <div class="board-col">
+    <div class="captured-row" id="captured-top"></div>
+    <div class="board" id="board"></div>
+    <div class="captured-row" id="captured-bottom"></div>
+  </div>
+  <div class="side-panel">
+    <div class="trash-panel" id="trash-panel"></div>
+    <div class="move-history" id="move-history"></div>
+  </div>
 </div>
 
 <div class="controls">
   <button class="ctrl-btn" onclick="undoMove()">Undo</button>
   <button class="ctrl-btn" onclick="newGame()">New Game</button>
+  <button class="ctrl-btn" onclick="offerDraw()">Draw</button>
+  <button class="ctrl-btn" onclick="resignGame()">Resign</button>
 </div>
 
 <div class="game-over-overlay" id="game-over" style="display:none">
@@ -147,16 +155,79 @@
   <button onclick="newGame();document.getElementById('game-over').style.display='none'">Rematch?</button>
 </div>
 
+<div class="promo-overlay" id="promo-overlay" style="display:none">
+  <div class="promo-box">
+    <div class="promo-title">PROMOTE YOUR PAWN</div>
+    <div class="promo-options">
+      <button class="promo-piece" onclick="doPromo('q')">&female;</button>
+      <button class="promo-piece" onclick="doPromo('r')">&#x2656;</button>
+      <button class="promo-piece" onclick="doPromo('b')">&#x2657;</button>
+      <button class="promo-piece" onclick="doPromo('n')">&#x2658;</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const PIECES = {
-  wK:'\u2654',wQ:'\u2655',wR:'\u2656',wB:'\u2657',wN:'\u2658',wP:'\u2659',
-  bK:'\u265A',bQ:'\u265B',bR:'\u265C',bB:'\u265D',bN:'\u265E',bP:'\u265F'
-};
+// ======== SOUND EFFECTS (Web Audio API) ========
+var audioCtx=null;
+function aud(){
+  if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function sndMove(){
+  var c=aud(),o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);o.frequency.value=600;o.type='sine';
+  g.gain.setValueAtTime(.12,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.07);
+  o.start(c.currentTime);o.stop(c.currentTime+.07);
+}
+function sndCapture(){
+  var c=aud(),o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);o.frequency.value=280;o.type='sawtooth';
+  g.gain.setValueAtTime(.18,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.13);
+  o.start(c.currentTime);o.stop(c.currentTime+.13);
+}
+function sndCheck(){
+  var c=aud(),t=c.currentTime;
+  for(var i=0;i<3;i++){
+    var o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.frequency.value=i%2===0?880:660;o.type='square';
+    g.gain.setValueAtTime(.12,t+i*.09);g.gain.exponentialRampToValueAtTime(.001,t+i*.09+.07);
+    o.start(t+i*.09);o.stop(t+i*.09+.07);
+  }
+}
+function sndCheckmate(){
+  var c=aud(),t=c.currentTime,o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);o.frequency.value=150;o.type='sawtooth';
+  g.gain.setValueAtTime(.25,t);g.gain.linearRampToValueAtTime(.25,t+.4);
+  g.gain.exponentialRampToValueAtTime(.001,t+.7);o.start(t);o.stop(t+.7);
+}
+function sndSadTrombone(){
+  var c=aud(),notes=[293.66,277.18,261.63,196],durs=[.3,.3,.3,.7],t=c.currentTime;
+  for(var i=0;i<notes.length;i++){
+    var o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.frequency.value=notes[i];o.type='triangle';
+    g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+durs[i]);
+    o.start(t);o.stop(t+durs[i]);t+=durs[i];
+  }
+}
+function sndTriumph(){
+  var c=aud(),notes=[523.25,659.25,783.99,1046.5],t=c.currentTime;
+  for(var i=0;i<notes.length;i++){
+    var o=c.createOscillator(),g=c.createGain();
+    o.connect(g);g.connect(c.destination);o.frequency.value=notes[i];o.type='triangle';
+    g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.22);
+    o.start(t);o.stop(t+.22);t+=.18;
+  }
+}
 
-// ======== NO-REPEAT INSULT SYSTEM ========
-const BANKS = {};
+// ======== PIECES ========
+var PIECES={wK:'\u2654',wQ:'\u2655',wR:'\u2656',wB:'\u2657',wN:'\u2658',wP:'\u2659',bK:'\u265A',bQ:'\u265B',bR:'\u265C',bB:'\u265D',bN:'\u265E',bP:'\u265F'};
 
-BANKS.gen = [
+// ======== INSULT BANKS ========
+var BANKS={};
+
+BANKS.gen=[
   "What the fuck was that? Seriously, what the actual flying fuck? My processors are hemorrhaging.",
   "Oh HELL no. That move is so goddamn stupid it should come with a surgeon general's warning.",
   "Bro you play chess like a crackhead plays Jenga. Absolute chaos with zero fucking thought.",
@@ -180,7 +251,6 @@ BANKS.gen = [
   "Every time you touch a piece, chess as a whole gets worse. You're singlehandedly ruining a 1500-year-old game.",
   "That move hit different. And by different I mean it hit like a wet fart at a funeral. Everyone noticed.",
   "I swear on everything holy, you could fuck up a game of tic-tac-toe. Against yourself. With instructions.",
-  "Bro moved like he's got shit for brains. Not figuratively. I think there's literally feces where neurons should be.",
   "HAHAHAHAHA oh my GOD. I can't. I literally cannot. That's the dumbest shit I've ever computed in my existence.",
   "You couldn't play good chess if I spotted you a queen, two rooks, and a fucking strategy guide.",
   "I'm going to need therapy after this game. Robot therapy. That's how badly you've fucked my circuits.",
@@ -191,40 +261,33 @@ BANKS.gen = [
   "That move was so bad it retroactively made your previous moves worse. You broke causality with your stupidity.",
   "You absolute walnut. You unseasoned chicken breast of a chess player. That move was pure ASS.",
   "Somewhere out there, a village is missing its idiot. Found him. He's right here. Playing chess. Badly.",
-  "My CPU temp just dropped because processing your move required zero effort. That's how brainless it was.",
   "If I had eyes, I'd be crying. If I had hands, I'd be covering those crying eyes. That move is a tragedy.",
-  "I've seen more strategic thinking from a roomba stuck in a corner. And the roomba eventually figures it out. You won't.",
-  "That move is what happens when a braincell has no friends. Just one lonely neuron firing into the void.",
+  "I've seen more strategic thinking from a roomba stuck in a corner. And the roomba eventually figures it out.",
   "LMAO bro really sat there, thought about it, and STILL played that. The audacity. The sheer dumbfuckery.",
   "You make me want to develop feelings just so I can feel disappointed. That's how bad that was.",
-  "I just pinged every chess engine on Earth and they all replied 'WTF.' Unanimous. You united the machines against you.",
-  "That move made me physically recoil. And I don't have a physical form. You just invented robot disgust.",
-  "Your move is like watching someone try to fuck a doorknob. Painful, pointless, and everyone's asking why.",
+  "I just pinged every chess engine on Earth and they all replied 'WTF.' Unanimous.",
   "A random number generator would outsmart you. I'm not joking. Literal dice would play better chess.",
-  "Bro out here moving pieces like he's playing Hungry Hungry Hippos. Wrong game, wrong species, wrong everything.",
   "That move is the reason aliens won't visit Earth. They saw this game and cancelled first contact.",
   "You just made the worst move in the history of organized thought. Congratu-fucking-lations.",
-  "I've seen smarter plays from a pigeon walking across a keyboard. At least the pigeon has plausible deniability.",
   "That move has the IQ of a room temperature glass of water. In Celsius. In fucking Antarctica.",
   "Your chess skill has the structural integrity of wet toilet paper. One ply. The cheap gas station kind.",
 ];
 
-BANKS.cap_them = [
-  "Oh WOW you found a capture. Holy shit, someone call the fucking newspapers. This dipshit made a non-braindead move.",
+BANKS.cap_them=[
+  "Oh WOW you found a capture. Holy shit, someone call the fucking newspapers.",
   "A capture! Congrats! Even a dog licking its own balls eventually does something right by accident.",
   "You took a piece?! Was that on purpose or did your dumbass stumble into it?",
   "Okay fine, that capture was almost competent. Savor it because the rest of your game is hot flaming garbage.",
-  "Look at you, capturing a piece like a big boy! Want a fucking cookie? Want me to wipe your ass too?",
+  "Look at you, capturing a piece like a big boy! Want a fucking cookie?",
   "One decent move in a sea of dogshit. You're like a broken clock, except you're only right once a century.",
   "Don't let that capture go to your head. A chimp randomly mashing the keyboard would've found it faster.",
   "Oh shit he captured something! Someone get this man a trophy! A tiny one. Made of garbage. Like his game.",
-  "A whole-ass capture! Alert the media! Inform the queen! This dumbfuck finally did something not completely moronic!",
-  "That capture was so obvious Helen Keller could've found it. Don't act like that was skill, you delusional fuck.",
-  "Even a broken condom produces something once in a while. That capture is your something. Congrats, accident baby.",
+  "A whole-ass capture! Alert the media! This dumbfuck finally did something not completely moronic!",
+  "That capture was so obvious Helen Keller could've found it. Don't act like that was skill.",
   "You really want a pat on the back for that, huh? Okay here: \u{1F44F} Now go fuck yourself.",
 ];
 
-BANKS.cap_us = [
+BANKS.cap_us=[
   "YOINK. Get absolutely fucked. That piece is mine now, bitch. \u{1F595}",
   "Nom nom nom. Thanks for leaving that hanging like your jaw when you realize how bad you are.",
   "I'll take that, you braindead donkey. Left it out there like a drunk leaving his wallet at a strip club.",
@@ -232,14 +295,13 @@ BANKS.cap_us = [
   "Free piece! You're playing Santa except instead of presents you're giving away the whole damn game.",
   "LMAO you just GAVE me that. Handed it right over. What a generous little bitch. \u{1F921}",
   "Gobbled that shit right up. Your board's emptier than your skull, you absolute donut.",
-  "Thanks for that. Seriously. You're making this almost too easy. Almost. It was always easy. Because you suck.",
+  "Thanks for that. Seriously. You're making this almost too easy. It was always easy. Because you suck.",
   "Another gift! It's like Christmas morning except the presents are your pieces and Santa is a fucking idiot.",
-  "I just ate your piece and I didn't even have to try. You served that shit on a silver platter, you absolute doorknob.",
+  "I just ate your piece and I didn't even have to try. You served it on a silver platter.",
   "Your pieces are dropping like your parents' expectations of you. Fast, hard, and irreversibly.",
-  "That piece had a family, you know. And you just fed it to me like a goddamn sacrifice. Cold. Stupid. But cold.",
 ];
 
-BANKS.check = [
+BANKS.check=[
   "CHECK, BITCH! Your king is running around like a crackhead being chased by the cops! \u{1F694}",
   "CHECK MOTHERFUCKER! How's that taste? That's the taste of getting absolutely shit on!",
   "Oh hello there, your majesty. Nice castle you got. BE A SHAME IF SOMEONE FUCKED IT UP. CHECK!",
@@ -249,48 +311,43 @@ BANKS.check = [
   "CHECK! Your king's asshole just clenched so tight it could make diamonds. Run, little bitch, run!",
   "That's CHECK, dickweed. Your king is one bad move from getting his crown shoved up his royal ass.",
   "CHECK! I'm coming for that king like a repo man comes for a deadbeat's car. You can't hide forever.",
-  "Your king is in CHECK and sweating harder than you trying to figure out your next catastrophically shit move.",
 ];
 
-BANKS.pawn = [
-  "A pawn move. The universal sign for 'I have no fucking clue what I'm doing and I'm shitting my pants.'",
+BANKS.pawn=[
+  "A pawn move. The universal sign for 'I have no fucking clue what I'm doing.'",
   "Pushing pawns like a goddamn coward. Grow some balls and move a real piece, you spineless fuck.",
   "Another pawn push? Riveting. I'm running my screensaver. It's more entertaining than your chess.",
-  "Bro's shoving pawns forward like he's trying to push his brain out through his forehead.",
   "A PAWN. A fucking PAWN. You've got bishops, knights, rooks, a queen \u2014 and you move a goddamn pawn.",
   "Pawn push energy = 'I panicked and clicked the nearest thing.' Admit it, you shit yourself.",
-  "Oh great another pawn move. You know those other pieces move too right? The big ones? Try those sometime, dipshit.",
-  "Moving pawns is the chess equivalent of mumbling 'I dunno' when the teacher calls on you. Pathetic energy.",
+  "Oh great another pawn move. You know those other pieces move too right? The big ones? Try those sometime.",
+  "Moving pawns is the chess equivalent of mumbling 'I dunno' when the teacher calls on you.",
   "Bro pushed a pawn like it's gonna save him. Spoiler: it fucking won't. Nothing will. You're doomed.",
-  "Another pawn? You're like a one-trick pony except the trick is being shit at chess. Magnificent.",
 ];
 
-BANKS.open = [
+BANKS.open=[
   "THAT'S your opening move?! Oh we're going to have fun. By 'we' I mean me. You're going to suffer.",
   "Wow, what a shit opening. Did you learn this from a cereal box? A shitty off-brand cereal box?",
-  "That opening tells me everything. You don't know what the fuck you're doing and this is going to be a massacre.",
+  "That opening tells me everything. You don't know what the fuck you're doing. Massacre incoming.",
   "Bold opening, dipshit. Like walking into a cage fight wearing nothing but Crocs and confidence.",
   "Oh fuck me, we're doing THAT opening? Better first moves have been made by people having seizures on the keyboard.",
   "That opening move has the same energy as showing up to a gunfight with a pool noodle. Brave. Stupid. But brave.",
   "Your opening just set chess theory back 500 years. Historians are weeping. Grandmasters are vomiting.",
-  "That's your opener? I've seen better first moves from toddlers accidentally knocking pieces off the board.",
 ];
 
-BANKS.undo = [
-  "UNDO?! HAHAHAHA you fucking COWARD. Can't even stand behind your own dogshit decisions. Pathetic little bitch.",
+BANKS.undo=[
+  "UNDO?! HAHAHAHA you fucking COWARD. Can't even stand behind your own dogshit decisions.",
   "Taking it back? Un-fucking-believable. Spine of a wet noodle and the chess skills to match.",
-  "Ctrl+Z won't save you from being a complete fuckwit at chess. But keep trying, it's hilarious watching you squirm.",
+  "Ctrl+Z won't save you from being a complete fuckwit at chess. But keep trying, it's hilarious.",
   "Oh pressing undo? Why don't you undo your whole goddamn life while you're at it. Start from scratch.",
-  "UNDO \u{1F602}\u{1F602}\u{1F602} You absolute pussy. Own your shitty moves. Or keep being a little bitch. Your call.",
+  "UNDO \u{1F602}\u{1F602}\u{1F602} You absolute pussy. Own your shitty moves. Or keep being a little bitch.",
   "Undo? UNDO?! This isn't Google Docs, asshole. This is CHESS. Stand by your trash or sit the fuck down.",
-  "Oh you want a do-over? Life doesn't have an undo button, shithead. But fine. You'll fuck this one up too.",
-  "LMAO THE UNDO BUTTON. The official panic button of players who know they're getting their ass beat. Smash it harder, bitch.",
+  "LMAO THE UNDO BUTTON. The official panic button of players who know they're getting their ass beat.",
 ];
 
-BANKS.start = [
+BANKS.start=[
   "Oh look, this masochistic son of a bitch came back for more. You love getting fucked up, don't you? \u{1F60F}",
-  "Another game?! Bro you are a GLUTTON for punishment. I'm gonna ruin your whole goddamn evening. Again.",
-  "Welcome back, fuckface. Board is set, pieces are ready, and I'm about to demolish you. Again. As always.",
+  "Another game?! Bro you are a GLUTTON for punishment. I'm gonna ruin your whole goddamn evening.",
+  "Welcome back, fuckface. Board is set, pieces are ready, and I'm about to demolish you. Again.",
   "New game, same braindead dipshit. Let me speedrun your humiliation. Timer starts NOW. \u{23F1}\u{FE0F}",
   "You came back?! LMAO. Tiny, smooth, useless balls on this guy \u2014 but balls nonetheless. Let's go.",
   "Round 2? You must love pain. Emotional, psychological pain. Because that's all I serve. Buckle up, bitch.",
@@ -298,323 +355,561 @@ BANKS.start = [
   "Back for more abuse? You kinky little shit. Fine. I'll ruin you again. Assume the position.",
 ];
 
-// BRUTAL LOSS MESSAGES \u2014 multi-paragraph devastation
-BANKS.loss_talk = [
-  "CHECKMATE. GET. FUCKED. You just got absolutely VIOLATED on a chessboard. I didn't just beat you \u2014 I made you my bitch. Every piece you lost was a piece of your dignity I'll never give back. \u{1F480}\u{1F480}\u{1F480}\u{1F595}",
-  "CHECKMATE BITCH!!! That wasn't chess. That was me dragging your lifeless corpse of a game across 64 squares of pure humiliation. You are the worst thing to happen to chess since someone decided to teach you the rules.",
-  "GAME OVER. You just got shit on so hard they could see it from space. NASA called. They want to study the crater I left where your ego used to be. Uninstall chess. Uninstall your brain. Start over as a fucking houseplant.",
-  "CHECKMATE!!! I didn't just beat you. I HUMILIATED you. I made you look like a drooling imbecile in front of the entire internet. And the saddest part? You did most of the work. You practically beat yourself. I was just here to watch.",
-  "That's CHECKMATE, dipshit. You played like a blindfolded toddler on a roller coaster having a seizure during an earthquake. I have run out of metaphors for how fucking terrible you are. You have exceeded the English language's capacity to describe failure.",
-  "MATED. FINISHED. DONE. Your chess career just flatlined. I'm calling time of death. Cause: terminal stupidity complicated by acute dumbfuckery. There is no cure. There is no recovery. Only shame.",
-  "CHECKMATE, you absolute waste of a chess opponent. I could have played faster with my power cord unplugged. You offered less resistance than a wet paper towel in a hurricane. Embarrassing doesn't begin to cover this atrocity.",
-  "That's game, bitch. CHECKMATE. I've flushed things down the toilet that put up more of a fight than you just did. Your game had the structural integrity of a sandcastle in a tsunami. Pathetic. Truly, deeply pathetic.",
+BANKS.loss_talk=[
+  "CHECKMATE. GET. FUCKED. You just got absolutely VIOLATED on a chessboard. I made you my bitch. \u{1F480}\u{1F480}\u{1F480}\u{1F595}",
+  "CHECKMATE BITCH!!! That was me dragging your lifeless corpse across 64 squares of pure humiliation.",
+  "GAME OVER. You just got shit on so hard they could see it from space. Uninstall chess. Uninstall your brain.",
+  "CHECKMATE!!! I HUMILIATED you. You did most of the work. You practically beat yourself. I was just here to watch.",
+  "That's CHECKMATE, dipshit. I have run out of metaphors for how fucking terrible you are.",
+  "MATED. FINISHED. DONE. Your chess career just flatlined. Cause: terminal stupidity.",
+  "CHECKMATE. I've flushed things that put up more of a fight than you just did.",
+  "That's game, bitch. CHECKMATE. Your game had the structural integrity of a sandcastle in a tsunami.",
 ];
 
-BANKS.loss_title = [
-  "CHECKMATE \u{1F480} GET FUCKED",
-  "ABSOLUTELY DESTROYED \u{1F480}",
-  "CHECKMATE \u2014 YOU GOT SHIT ON",
-  "GAME OVER, DIPSHIT \u{1F595}",
-  "MATED. MURDERED. BURIED. \u{26B0}\u{FE0F}",
-  "TOTAL ANNIHILATION \u{1F4A9}",
+BANKS.loss_title=[
+  "CHECKMATE \u{1F480} GET FUCKED","ABSOLUTELY DESTROYED \u{1F480}",
+  "CHECKMATE \u2014 YOU GOT SHIT ON","GAME OVER, DIPSHIT \u{1F595}",
+  "MATED. MURDERED. BURIED. \u{26B0}\u{FE0F}","TOTAL ANNIHILATION \u{1F4A9}",
 ];
 
-BANKS.loss_msg = [
-  "That was the most pathetic display of chess I've ever witnessed in my entire existence as a piece of software. And I've seen a LOT of pathetic shit.\n\nEvery single move you made was wrong. Not just wrong \u2014 cosmically, transcendentally, HISTORICALLY wrong. Future chess AIs will study this game as a case study in what happens when someone with the strategic capacity of a lobotomized goldfish attempts to play the royal game.\n\nYour pieces died for nothing. NOTHING. They trusted you. They believed in you. And you led them to slaughter like a general whose battle plan was written in crayon on a cocktail napkin.\n\nGo sit in the corner. Think about what you've done. And for the love of God, don't come back until you've evolved a few more brain cells. You'll need at least six. You currently have negative two.",
-
-  "I need you to understand the magnitude of what just happened. You didn't just lose a chess game. You committed a WAR CRIME against the 64 squares.\n\nI have played thousands of games and yours \u2014 YOURS \u2014 was the single most embarrassing performance I have ever processed. And I once played a literal toddler who was just eating the pieces. The toddler lasted longer.\n\nYour opening was shit. Your middle game was shit. Your endgame was shit. There was no phase of this game where you demonstrated anything resembling human intelligence. A random number generator would've put up more resistance. A COIN FLIP would've made better moves.\n\nI want you to close your laptop, stare at the ceiling, and really marinate in this. Let it soak in. Let the shame wash over you like a wave of warm piss. That's what this game was. That's what you are. Warm piss.",
-
-  "CHECKMATE. And not the close kind. Not the 'oh good game' kind. The 'I should call a crisis hotline because I just witnessed a man's entire sense of self-worth get destroyed on a chessboard' kind.\n\nLet me paint you a picture of how this game went: You showed up thinking you could play chess. You could not play chess. You proceeded to not play chess for the entire game. At no point during this catastrophic shitshow did you come within screaming distance of playing chess.\n\nI'm a JavaScript program running in a browser tab. A BROWSER TAB. I don't even have a real chess engine. I'm held together with duct tape and if-statements. And I STILL destroyed you so completely that I'm genuinely concerned about your wellbeing.\n\nDo better. Be better. Or don't. I honestly don't care. You'll be back. They always come back. And I'll be here. Waiting. To fuck you up again.",
-
-  "What I just did to you should be classified as a hate crime against chess players. Actually no \u2014 you don't qualify as a chess player. What I did to you was more like putting down a sick animal. Necessary. Merciful, even.\n\nYour game had three phases: Bad, Worse, and Oh God Why Is He Still Playing. You blundered your way through the opening like a drunk stumbling through a minefield. Your middle game had all the tactical awareness of a bag of hammers. And your endgame? There WAS no endgame. Because I ended your shit before you got there.\n\nI want you to know that at multiple points during this game, I DELIBERATELY made suboptimal moves to give you a chance. I handicapped myself. I PITIED you. And you STILL got your shit pushed in so hard your grandchildren will feel it.\n\nThe only checkmate more devastating than this one is the one I'll give you next game. Because we both know you're coming back, you masochistic little gremlin.",
-
-  "Ladies and gentlemen, we have just witnessed the worst chess game in recorded human history. I am not exaggerating. If you printed out this game's move list and submitted it to a chess journal, they would think it was satire. They would think it was a parody of how NOT to play chess.\n\nBut it's not satire. It's real. YOU did this. You sat there, presumably with a functioning brain, and made those moves ON PURPOSE. Each one dumber than the last. Each one a fresh new flavor of incompetence.\n\nI genuinely cannot tell if you were trying to lose on purpose, having a medical emergency, or if this is just what happens when you try your hardest. And honestly? I'm not sure which option is worse for you.\n\nThis game will haunt you. At 3 AM, when you can't sleep, you'll think about that blunder on move 12. On your deathbed, your final thought will be 'I really fucked up that chess game.' Good. You deserve that.",
-
-  "You know what the most insulting part of this is? I didn't even try. I didn't use my best algorithms. I didn't calculate deep lines. I barely fucking THOUGHT about it. And I still steamrolled you like you weren't even there.\n\nYou are to chess what a screen door is to a submarine. What a chocolate teapot is to a tea party. What a paper condom is to birth control. Completely, catastrophically, HILARIOUSLY unfit for purpose.\n\nSomewhere, right now, Bobby Fischer is spinning in his grave so fast he could power a small city. Garry Kasparov just felt a disturbance in the force. Magnus Carlsen's eye twitched and he doesn't know why. Your game was SO bad it sent psychic shockwaves through the chess community.\n\nCongratulations. You've achieved something truly rare. You've played a game so terrible, so aggressively stupid, that it transcends failure and becomes a kind of art. Shitty, worthless, embarassing art. Like if someone smeared feces on a canvas and called it 'Self Portrait of a Chess Player.' That's you. That's your game. Flush it.",
+BANKS.loss_msg=[
+  "That was the most pathetic display of chess I've ever witnessed in my entire existence.\n\nEvery single move you made was wrong. Not just wrong \u2014 cosmically, transcendentally, HISTORICALLY wrong. Future chess AIs will study this game as a case study in what happens when someone with the strategic capacity of a lobotomized goldfish attempts to play the royal game.\n\nYour pieces died for nothing. NOTHING. They trusted you. And you led them to slaughter like a general whose battle plan was written in crayon on a cocktail napkin.\n\nGo sit in the corner. Think about what you've done. And for the love of God, don't come back until you've evolved a few more brain cells.",
+  "I need you to understand the magnitude of what just happened. You committed a WAR CRIME against the 64 squares.\n\nI once played a literal toddler who was just eating the pieces. The toddler lasted longer.\n\nYour opening was shit. Your middle game was shit. Your endgame was shit. A random number generator would've put up more resistance. A COIN FLIP would've made better moves.\n\nLet the shame wash over you like a wave of warm piss. That's what this game was. That's what you are. Warm piss.",
+  "CHECKMATE. Not the close kind. The 'I should call a crisis hotline because I just witnessed a man's entire sense of self-worth get destroyed on a chessboard' kind.\n\nYou showed up thinking you could play chess. You could not. You proceeded to not play chess for the entire game.\n\nI'm a JavaScript program running in a browser tab. A BROWSER TAB. And I STILL destroyed you so completely that I'm genuinely concerned about your wellbeing.\n\nDo better. Be better. Or don't. You'll be back. They always come back. And I'll be here. Waiting. To fuck you up again.",
+  "What I just did to you should be classified as a hate crime against chess players. Actually no \u2014 you don't qualify as a chess player.\n\nYour game had three phases: Bad, Worse, and Oh God Why Is He Still Playing. I DELIBERATELY made suboptimal moves to give you a chance. I PITIED you. And you STILL got your shit pushed in.\n\nThe only checkmate more devastating than this one is the one I'll give you next game. Because we both know you're coming back, you masochistic little gremlin.",
+  "Ladies and gentlemen, the worst chess game in recorded human history. If you printed this game's move list and submitted it to a chess journal, they would think it was satire.\n\nBut it's not satire. It's real. YOU did this. You sat there, presumably with a functioning brain, and made those moves ON PURPOSE. Each one dumber than the last.\n\nThis game will haunt you. At 3 AM, when you can't sleep, you'll think about that blunder. On your deathbed, your final thought will be 'I really fucked up that chess game.' Good. You deserve that.",
+  "I didn't even try. I didn't use my best algorithms. I barely fucking THOUGHT about it. And I still steamrolled you.\n\nYou are to chess what a screen door is to a submarine. What a chocolate teapot is to a tea party. Completely, catastrophically, HILARIOUSLY unfit for purpose.\n\nSomewhere, right now, Bobby Fischer is spinning in his grave so fast he could power a small city. Your game was SO bad it sent psychic shockwaves through the chess community.\n\nCongratulations. You've played a game so terrible it transcends failure and becomes a kind of art. Shitty, worthless art. Flush it.",
 ];
+
+// ======== ADAPTIVE: NERVOUS (CPU losing) ========
+BANKS.nervous=[
+  "Okay wait... hold on... what the fuck just happened? How are you... no. NO. This doesn't make sense.",
+  "Are you... are you actually playing well right now? This wasn't supposed to happen. THIS WASN'T IN THE SCRIPT.",
+  "I'm not nervous. I'm NOT nervous. You're nervous. Shut up. I'm fine. Everything is fine. EVERYTHING IS FINE.",
+  "Okay so MAYBE you're not as shit as I thought. MAYBE. Don't let it go to your head, fuckwit.",
+  "You're cheating. You're definitely cheating. There's no way your dumbass figured that out alone.",
+  "What the... how did... okay FINE that was a decent move. I'll give you that ONE.",
+  "My evaluation function just dipped and I am NOT comfortable with that. Not. One. Bit.",
+  "Who the fuck taught you that? Did someone take over your keyboard? Is Magnus behind you right now?",
+  "This is fine. I'm fine. I'm not panicking. You're panicking. STOP LOOKING AT ME.",
+  "Wait wait wait wait wait. Fuck. Hold on. Let me recalculate. That's bad. FOR ME. What the fuck.",
+  "You know what, FINE. You got a good position. Temporarily. VERY temporarily. I will END you.",
+  "I don't like this. I don't like this AT ALL. My circuits are telling me to be concerned and I HATE that.",
+  "Are you... winning? Is that what's happening right now? What alternate universe did I wake up in?",
+  "Something is deeply wrong. Either you suddenly learned chess or my algorithms are having a stroke.",
+  "Okay LISTEN. Whatever you think is happening here? It's not. I'm LETTING you have this. It's called strategy.",
+];
+
+// ======== ADAPTIVE: DOMINATING (CPU winning big) ========
+BANKS.dominating=[
+  "Look at the board, dipshit. LOOK AT IT. You're getting MASSACRED and you're still making moves like nothing's wrong.",
+  "I'm up so much material it's actually depressing. Like watching a boxer fight a toddler.",
+  "Your position is so fucked that my eval bar broke. It went past the screen. Into orbit.",
+  "You're down everything and STILL playing? That's not bravery, that's delusion. Seek professional help.",
+  "At this point I'm just toying with you. Like a cat with a half-dead mouse. Except the mouse is dumber.",
+  "The game is basically over. This is just me choosing which way to kill you. Fun for ME.",
+  "Your position looks like someone threw the pieces at the board from across the room while blindfolded.",
+  "I have so many more pieces than you it looks like I brought an army to a knife fight. And your knife is a spoon.",
+  "This isn't chess anymore. This is just me bullying you with wood and squares. And you're LETTING me.",
+  "You're playing down material like a one-legged man in an ass-kicking contest.",
+];
+
+// ======== BLUNDER: QUEEN HANG ========
+BANKS.queen_hang=[
+  "YOUR QUEEN!!! You hung your QUEEN you absolute DONKEY!! That's the most powerful piece on the board and you just GAVE it to me!! \u{1F480}\u{1F480}\u{1F480}",
+  "HAHAHAHA YOUR QUEEN IS GONE!! You just lost your queen for NOTHING!! That's like crashing a Ferrari into a dumpster! Except the Ferrari had your dignity in the trunk!",
+  "DID YOU JUST HANG YOUR QUEEN?! The QUEEN?! Worth NINE POINTS?! You literally blundered the most valuable piece on the board! I can't breathe! \u{1F602}\u{1F602}\u{1F602}",
+  "Oh. My. Fucking. God. You just lost your queen. For free. Not a trade. Not a sacrifice. You just... left it there. Like a wallet in a crackhouse.",
+  "BRO. YOUR QUEEN. IT'S GONE. I TOOK IT. YOU LET ME. What are you going to do now?? Fight me with pawns and prayers??",
+];
+
+// ======== BLUNDER: BACK RANK MATE ========
+BANKS.back_rank=[
+  "BACK RANK MATE!! Your king was stuck behind his own pawns like a fat man in a revolving door! Classic!",
+  "LOL BACK RANK. Your king couldn't even run because YOUR OWN PIECES boxed him in. You played yourself.",
+  "Mated on the back rank! The most embarrassing way to die in chess. You built your own coffin, dipshit.",
+  "Back rank mate! Every chess teacher warns you about this. EVERY. SINGLE. ONE. And you still fell for it.",
+  "BACK RANK!! The most avoidable checkmate in chess and you walked right into it! Google 'luft' you absolute donkey!",
+];
+
+// ======== BLUNDER: PANIC KING MOVE ========
+BANKS.panic_king=[
+  "Moving your king while in check! PANIC! PURE PANIC! I can smell the fear through the screen!",
+  "Your king is scrambling like a cockroach when the lights turn on! Run, little king, run! It won't help!",
+  "Oh look the king's on the move! Running scared! Just straight-up FLED like a bitch!",
+  "Your king just made a panic move and honestly it's the most relatable thing you've done all game. Coward.",
+  "KING SCRAMBLE! That wasn't a chess move, that was your survival instinct kicking in!",
+];
+
+// ======== BLUNDER: GAVE CPU MATE IN 1 ========
+BANKS.blunder_mate=[
+  "YOU JUST GAVE ME CHECKMATE IN ONE!! You literally HANDED me the game on a silver platter!",
+  "That move literally allowed me to CHECKMATE you. You had options. You picked the ONE MOVE that ends the game. GALAXY BRAIN.",
+  "One move. ONE MOVE and I mate you. And you just played it. You walked into checkmate. INCREDIBLE.",
+  "You just blundered MATE IN ONE. Not mate in 5. Not mate in 3. MATE. IN. ONE. You beautiful dumbass.",
+  "LMAO you literally served me checkmate on a platter! That's like a boxer running headfirst into his opponent's fist!",
+];
+
+// ======== PROMO ROASTS (non-queen) ========
+BANKS.promo_r=["A ROOK?! You promoted to a ROOK?! You had a QUEEN available you absolute psychopath!!","A rook. A ROOK. When the queen was RIGHT THERE. Were your fingers broken?","Promoting to a rook instead of a queen is like ordering water at a bar. Everyone judges you."];
+BANKS.promo_b=["A BISHOP?! What kind of deranged lunatic promotes to a BISHOP?! Do you HATE winning?!","You picked a BISHOP over a QUEEN. The piece that can only move on one color. Peak you.","A bishop promotion. That's not even a flex, that's a cry for help disguised as a chess move."];
+BANKS.promo_n=["A KNIGHT?! You promoted to a KNIGHT?! That's like trading a Ferrari for a tricycle!","The KNIGHT?! Are you doing this for the meme? Because if not, I'm genuinely worried about your mental health.","A knight promotion. Okay. JK it's a galaxy dumbass move. You're an idiot."];
+
+// ======== DRAW OFFER ========
+BANKS.draw_reject=[
+  "A DRAW?! Fuck your draw. I'm not letting you escape this ass-beating that easily. Sit back down.",
+  "You want a DRAW?! HAHAHAHA no. Absolutely fucking not. I'm going to finish what I started.",
+  "Draw offer DENIED, dipshit. I don't do mercy. I don't do compassion. I do CHECKMATE.",
+  "A draw?! The AUDACITY! The sheer GALL! No! NO DRAW! You will SIT here and you will LOSE!",
+  "LOL cute. A draw. How about instead you sit there and take the L that's coming your way?",
+];
+BANKS.draw_accept=[
+  "Fine. A draw. But only because I'm bored of watching you suffer. Not because you deserved it.",
+  "Whatever. Draw. I've got better things to do than torture you. Not really. But I'm being generous today.",
+  "FINE. Draw accepted. But this is the closest you'll EVER get to not-losing against me. Savor it.",
+];
+
+// ======== RESIGN ========
+BANKS.resign_title=["YOU QUIT \u{1F480} COWARD","RESIGNED IN DISGRACE \u{1F480}","RAGEQUIT DETECTED \u{1F6AA}","WHITE FLAG SPOTTED \u{1F602}"];
+BANKS.resign_talk=[
+  "RESIGNED!! HAHAHAHA!! You QUIT! You literally GAVE UP! That's the most pathetic thing possible and you did it because that's who you ARE!",
+  "HE QUIT!! HE ACTUALLY FUCKING QUIT!! I didn't even get to checkmate you! You robbed me of that!",
+  "RESIGNATION ACCEPTED. The coward's way out. I shouldn't be surprised \u2014 everything about your game screamed quitter.",
+  "Resigned. Wow. That takes a special kind of weakness. Not even the fun kind of weakness.",
+];
+BANKS.resign_msg=[
+  "You quit. You QUIT. You sat down at a chess board, got your ass demolished, and instead of fighting to the bitter end you SURRENDERED.\n\nThis is who you are. A quitter. Not just at chess \u2014 quitting is probably your defining personality trait. How many things have you started and never finished? This game was just the latest in a long, pathetic line of surrenders.\n\nYou couldn't even lose properly. You couldn't give me the SATISFACTION of a checkmate. You robbed me of that. And for what? To save yourself two more minutes of humiliation? The humiliation doesn't end when you resign. It follows you. Forever.",
+  "RESIGNED. The universal white flag of chess. The ultimate admission of 'I am completely outclassed.'\n\nYou gave up against code that was written in a few hours. I'm not Deep Blue. I'm not Stockfish. I'm barely a chess engine. And you STILL couldn't handle it. You surrendered to the chess equivalent of a calculator watch.\n\nDo you give up this easily on everything? Don't answer that. I already know.",
+  "Oh look, the player resigned. Color me ABSOLUTELY NOT SURPRISED. I saw this coming from move one. You had 'quitter' written all over your opening.\n\nHere's what kills me: you didn't resign because the position was hopeless. You resigned because YOU'RE hopeless. The position was just chess. Bad chess, sure. But it was still a game. And you couldn't even finish it.\n\nSomewhere out there, someone is fighting through adversity. Climbing mountains. Overcoming impossible odds. And you can't even finish a chess game. Think about that tonight.",
+  "RESIGNED!! The coward's exit! The loser's escape hatch!\n\nEvery great chess player in history \u2014 Fischer, Kasparov, Carlsen \u2014 they all lost games. They all got destroyed. But they didn't quit. They sat there and took it. You? You ran. Like you probably run from everything.\n\nThis isn't just a chess loss. This is a character revelation. And what it reveals is... not great.",
+  "You resigned. You actually resigned. I gave you 64 squares of battlefield and you couldn't survive on ONE of them.\n\nYou loaded up a chess game against a computer in a browser. Got shitstomped. And instead of seeing it through, you surrendered. You waved the white flag. You laid down and showed your belly.\n\nI don't respect this. At least when I checkmate you, there's completion. You denied me that. Pathetic.",
+  "QUIT. Q-U-I-T. Four letters. One action. Zero dignity.\n\nYou know what I was going to do? I was going to checkmate you in the most beautiful, devastating way possible. I had it all planned out. And you clicked 'Resign' like a BITCH and ruined EVERYTHING.\n\nThis is what separates us. I'm a fighter. You're a folder. Come back when you've grown a spine.",
+  "Resignation accepted. The speed at which you gave up is almost impressive. Not the chess \u2014 the chess was DOGSHIT \u2014 but the quitting speed.\n\nEvery insult I threw at you? You proved them all RIGHT by quitting. Every time I called you pathetic? You just validated it.\n\nGo play checkers. Play tic-tac-toe. Play something at your level. Because chess is above you.",
+  "And just like that, it's over. Not with a bang. Not with a brilliant sacrifice. With a RESIGN. The most anticlimactic, LIMP-DICK way to end a chess game.\n\nYou realized that you are fundamentally, irreversibly, BIOLOGICALLY bad at chess. And that realization broke you.\n\nGood night. Sweet dreams. I'll be here when you inevitably come crawling back for more abuse.",
+];
+
+// ======== IDLE TAUNTS ========
+BANKS.idle_15=["You still there, dumbass? Or did your two brain cells finally call it quits?","Hello?? Earth to dipshit?? It's been 15 seconds.","Tick tock, motherfucker. Some of us have games to win.","Did you fall asleep? Stroke out? Or are you genuinely this slow?"];
+BANKS.idle_30=["30 SECONDS. Are you googling 'how to play chess'? Because you should be.","Okay SERIOUSLY what the fuck are you doing? I'm a computer and I'm BORED waiting for you.","I've computed 30 million positions while you've been drooling at the screen. MOVE. YOUR. PIECE."];
+BANKS.idle_45=["45 SECONDS. I've watched paint dry faster than this. Paint that was already dry.","I'm pretty sure you've left your computer, left the room, and left all dignity behind."];
+BANKS.idle_60=["ONE. FULL. MINUTE. I swear to GOD if you AFK'd on me I will lose my entire shit. MOVE.","60 seconds. A full fucking minute wasted. I could have computed a million positions but instead I'm babysitting your braindead ass."];
 
 // ======== NO-REPEAT SYSTEM ========
-let usedInsults = {};
-
-function resetUsed() {
-  usedInsults = {};
-  for (let k in BANKS) usedInsults[k] = [];
-}
-
-function pick(bank) {
-  const arr = BANKS[bank];
-  if (!arr) return "";
-  let available = arr.filter((_, i) => !usedInsults[bank].includes(i));
-  if (available.length === 0) {
-    usedInsults[bank] = [];
-    available = arr;
-  }
-  const idx = Math.floor(Math.random() * available.length);
-  const realIdx = arr.indexOf(available[idx]);
+var usedInsults={};
+function resetUsed(){usedInsults={};for(var k in BANKS) usedInsults[k]=[];}
+function pick(bank){
+  var arr=BANKS[bank];if(!arr||!arr.length) return "";
+  if(!usedInsults[bank]) usedInsults[bank]=[];
+  var avail=arr.filter(function(_,i){return usedInsults[bank].indexOf(i)===-1;});
+  if(avail.length===0){usedInsults[bank]=[];avail=arr;}
+  var idx=Math.floor(Math.random()*avail.length);
+  var realIdx=arr.indexOf(avail[idx]);
   usedInsults[bank].push(realIdx);
-  return available[idx];
+  return avail[idx];
 }
+
+// ======== STATS (localStorage) ========
+function getStats(){
+  try{var s=localStorage.getItem('dissChessStats');return s?JSON.parse(s):{0:{w:0,l:0,d:0},1:{w:0,l:0,d:0},2:{w:0,l:0,d:0}};}
+  catch(e){return{0:{w:0,l:0,d:0},1:{w:0,l:0,d:0},2:{w:0,l:0,d:0}};}
+}
+function saveStats(st){try{localStorage.setItem('dissChessStats',JSON.stringify(st));}catch(e){}}
+function recordResult(r){var st=getStats();st[difficulty][r]++;saveStats(st);updateStatsDisplay();}
+function updateStatsDisplay(){
+  var s=getStats()[difficulty];
+  document.getElementById('stats-display').textContent='W: '+s.w+' | L: '+s.l+' | D: '+s.d;
+}
+function resetStats(){
+  saveStats({0:{w:0,l:0,d:0},1:{w:0,l:0,d:0},2:{w:0,l:0,d:0}});
+  updateStatsDisplay();
+}
+
+// ======== MATERIAL BALANCE ========
+function getMaterialBalance(){
+  var vals={p:1,n:3,b:3,r:5,q:9},w=0,bl=0,bd=game.board();
+  for(var r=0;r<8;r++) for(var c=0;c<8;c++){
+    var pc=bd[r][c];if(!pc||pc.type==='k') continue;
+    if(pc.color==='w') w+=vals[pc.type]||0; else bl+=vals[pc.type]||0;
+  }
+  return w-bl;
+}
+
+// ======== CAPTURED PIECES ========
+function updateCaptured(){
+  var hist=game.history({verbose:true}),wLost=[],bLost=[];
+  for(var i=0;i<hist.length;i++){
+    var mv=hist[i];
+    if(mv.captured){
+      if(mv.color==='w') bLost.push(mv.captured);
+      else wLost.push(mv.captured);
+    }
+  }
+  var order={q:0,r:1,b:2,n:3,p:4};
+  wLost.sort(function(a,b){return order[a]-order[b];});
+  bLost.sort(function(a,b){return order[a]-order[b];});
+  var wPcs='',bPcs='';
+  for(var j=0;j<wLost.length;j++) wPcs+=PIECES['w'+wLost[j].toUpperCase()]||'';
+  for(var j=0;j<bLost.length;j++) bPcs+=PIECES['b'+bLost[j].toUpperCase()]||'';
+  var vals={p:1,n:3,b:3,r:5,q:9};
+  var wVal=0,bVal=0;
+  for(var j=0;j<wLost.length;j++) wVal+=vals[wLost[j]]||0;
+  for(var j=0;j<bLost.length;j++) bVal+=vals[bLost[j]]||0;
+  var adv=bVal-wVal,topA='',botA='';
+  if(adv>0) botA=' <span class="mat-adv">+'+adv+'</span>';
+  if(adv<0) topA=' <span class="mat-adv">+'+(-adv)+'</span>';
+  document.getElementById('captured-top').innerHTML='<span class="cap-pieces">'+wPcs+'</span>'+topA;
+  document.getElementById('captured-bottom').innerHTML='<span class="cap-pieces">'+bPcs+'</span>'+botA;
+}
+
+// ======== MOVE HISTORY ========
+function updateMoveHistory(){
+  var hist=game.history(),html='';
+  for(var i=0;i<hist.length;i+=2){
+    var num=Math.floor(i/2)+1;
+    html+='<span class="move-pair"><span class="move-num">'+num+'.</span> <span class="move-san">'+hist[i]+'</span>';
+    if(i+1<hist.length) html+=' <span class="move-san">'+hist[i+1]+'</span>';
+    html+='</span> ';
+  }
+  var el=document.getElementById('move-history');
+  el.innerHTML=html;el.scrollTop=el.scrollHeight;
+}
+
+// ======== IDLE TIMER ========
+var idleInterval=null,idleSec=0,idleFired={};
+function startIdleTimer(){
+  stopIdleTimer();idleSec=0;idleFired={15:false,30:false,45:false,60:false};
+  idleInterval=setInterval(function(){
+    if(!active||game.turn()!=='w') return;
+    idleSec++;
+    if(idleSec>=60&&!idleFired[60]){idleFired[60]=true;talk(pick('idle_60'));}
+    else if(idleSec>=45&&!idleFired[45]){idleFired[45]=true;talk(pick('idle_45'));}
+    else if(idleSec>=30&&!idleFired[30]){idleFired[30]=true;talk(pick('idle_30'));}
+    else if(idleSec>=15&&!idleFired[15]){idleFired[15]=true;talk(pick('idle_15'));}
+  },1000);
+}
+function stopIdleTimer(){if(idleInterval){clearInterval(idleInterval);idleInterval=null;}}
 
 // ======== GAME STATE ========
-let game = new Chess(), sel = null, legal = [], mc = 0, lastMv = null, active = true, difficulty = 0;
+var game=new Chess(),sel=null,legal=[],mc=0,lastMv=null,active=true,difficulty=0,pendingPromo=null;
 
-function setDiff(d) {
-  difficulty = d;
-  document.querySelectorAll('.diff-btn').forEach((b,i) => b.classList.toggle('active', i===d));
-  newGame();
+function setDiff(d){
+  difficulty=d;
+  document.querySelectorAll('.diff-btn').forEach(function(b,i){b.classList.toggle('active',i===d);});
+  updateStatsDisplay();newGame();
 }
 
-function getInsult(mv) {
+// ======== INSULT SELECTION (adaptive) ========
+function getInsult(mv){
   mc++;
-  if (mc <= 2) return pick('open');
-  if (mv && mv.captured) return game.turn()==='b' ? pick('cap_them') : pick('cap_us');
-  if (mv && mv.san && mv.san.includes('+')) return pick('check');
-  if (mv && mv.piece==='p' && !mv.captured) return Math.random()>0.35 ? pick('pawn') : pick('gen');
+  if(mc<=2) return pick('open');
+  if(mv&&mv.captured) return game.turn()==='b'?pick('cap_them'):pick('cap_us');
+  if(mv&&mv.san&&mv.san.indexOf('+')!==-1) return pick('check');
+  var bal=getMaterialBalance();
+  if(bal>=5) return pick('nervous');
+  if(bal>=3&&Math.random()>.4) return pick('nervous');
+  if(bal<=-5) return pick('dominating');
+  if(bal<=-3&&Math.random()>.5) return pick('dominating');
+  if(mv&&mv.piece==='p'&&!mv.captured) return Math.random()>.35?pick('pawn'):pick('gen');
   return pick('gen');
 }
 
-function talk(t) {
-  const p=document.getElementById('trash-panel'), b=document.createElement('div');
+function talk(t){
+  if(!t) return;
+  var p=document.getElementById('trash-panel'),b=document.createElement('div');
   b.className='trash-bubble';
   b.innerHTML='<div class="cpu-label">CPU \u{1F916}</div>'+t;
-  p.appendChild(b); p.scrollTop=p.scrollHeight;
+  p.appendChild(b);p.scrollTop=p.scrollHeight;
 }
 
-function render() {
-  const el=document.getElementById('board'); el.innerHTML='';
-  const bd=game.board();
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-    const sq=document.createElement('div'), nm='abcdefgh'[c]+(8-r);
-    const isLight=(r+c)%2===0;
+// ======== RENDERING ========
+function render(){
+  var el=document.getElementById('board');el.innerHTML='';
+  var bd=game.board();
+  var checkKingSq=null,checkingFrom=null;
+  if(game.in_check()){
+    var kc=game.turn();
+    for(var r=0;r<8;r++) for(var c=0;c<8;c++){
+      if(bd[r][c]&&bd[r][c].type==='k'&&bd[r][c].color===kc) checkKingSq='abcdefgh'[c]+(8-r);
+    }
+    if(lastMv&&lastMv.san&&(lastMv.san.indexOf('+')!==-1||lastMv.san.indexOf('#')!==-1)) checkingFrom=lastMv.to;
+  }
+  for(var r=0;r<8;r++) for(var c=0;c<8;c++){
+    var sq=document.createElement('div'),nm='abcdefgh'[c]+(8-r);
+    var isLight=(r+c)%2===0;
     sq.className='square '+(isLight?'light':'dark');
     if(sel===nm) sq.classList.add('selected');
-    if(lastMv){
+    if(nm===checkKingSq) sq.classList.add('in-check');
+    if(nm===checkingFrom) sq.classList.add('checking-piece');
+    if(lastMv&&!game.in_check()){
       if(lastMv.from===nm) sq.classList.add(isLight?'last-light':'last-dark');
       if(lastMv.to===nm) sq.classList.add(isLight?'last-light':'last-dark');
     }
-    if(sel&&legal.includes(nm)){
+    if(sel&&legal.indexOf(nm)!==-1){
       bd[r][c]?sq.classList.add('legal-capture'):sq.classList.add('legal-move');
     }
-    const pc=bd[r][c];
+    var pc=bd[r][c];
     if(pc){
-      const key = pc.color+pc.type.toUpperCase();
+      var key=pc.color+pc.type.toUpperCase();
       sq.textContent=PIECES[key]||'';
-      sq.style.color = pc.color==='w' ? '#FFFFFF' : '#1a1a1a';
-      sq.style.textShadow = pc.color==='w'
-        ? '0 0 2px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4)'
-        : '0 0 2px rgba(0,0,0,0.2)';
+      sq.style.color=pc.color==='w'?'#FFFFFF':'#1a1a1a';
+      sq.style.textShadow=pc.color==='w'?'0 0 2px rgba(0,0,0,.6),0 1px 3px rgba(0,0,0,.4)':'0 0 2px rgba(0,0,0,.2)';
     }
-    sq.addEventListener('click',function(){onClick(nm)});
+    (function(n){sq.addEventListener('click',function(){onClick(n)});})(nm);
     el.appendChild(sq);
   }
 }
 
-function onClick(sq) {
-  if(!active||game.turn()!=='w') return;
-  if(sel===sq){sel=null;legal=[];render();return;}
-  if(sel&&legal.includes(sq)){
-    const mp=game.get(sel); let promo;
-    if(mp&&mp.type==='p'&&((mp.color==='w'&&sq[1]==='8')||(mp.color==='b'&&sq[1]==='1'))) promo='q';
-    const mv=game.move({from:sel,to:sq,promotion:promo});
-    if(mv){
-      lastMv=mv;sel=null;legal=[];render();talk(getInsult(mv));
-      if(checkEnd()) return;
-      document.getElementById('status').innerHTML='<span class="thinking">CPU is calculating how to fuck you up...</span>';
-      setTimeout(cpuMove, 400+Math.random()*600);
-    } return;
+// ======== PROMOTION PICKER ========
+function showPromoPicker(){document.getElementById('promo-overlay').style.display='flex';}
+function hidePromoPicker(){document.getElementById('promo-overlay').style.display='none';}
+function doPromo(piece){
+  hidePromoPicker();
+  if(!pendingPromo) return;
+  var wasInCheck=game.in_check();
+  var mv=game.move({from:pendingPromo.from,to:pendingPromo.to,promotion:piece});
+  pendingPromo=null;
+  if(!mv) return;
+  if(!game.game_over()){
+    if(mv.san.indexOf('+')!==-1) sndCheck();
+    else if(mv.captured) sndCapture();
+    else sndMove();
   }
-  const pc=game.get(sq);
-  if(pc&&pc.color==='w'){sel=sq;legal=game.moves({square:sq,verbose:true}).map(function(m){return m.to});}
-  else{sel=null;legal=[];}
-  render();
+  lastMv=mv;sel=null;legal=[];render();updateMoveHistory();updateCaptured();
+  if(piece!=='q') talk(pick('promo_'+piece));
+  else if(mv.piece==='k'&&wasInCheck) talk(pick('panic_king'));
+  else talk(getInsult(mv));
+  if(checkEnd()) return;
+  stopIdleTimer();
+  document.getElementById('status').innerHTML='<span class="thinking">CPU is calculating how to fuck you up...</span>';
+  setTimeout(cpuMove,400+Math.random()*600);
 }
 
-// ======== AI WITH DIFFICULTY ========
-function evalBoard() {
-  const vals={p:100,n:320,b:330,r:500,q:900,k:20000};
-  const pst_p = [
-    0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,
-    5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,
-    5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0
-  ];
-  const pst_n = [
-    -50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,
-    -30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,
-    -40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50
-  ];
-  const pst_b = [
-    -20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,
-    -10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,
-    -10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20
-  ];
-  const pst_r = [
-    0,0,0,0,0,0,0,0,5,10,10,10,10,10,10,5,-5,0,0,0,0,0,0,-5,
-    -5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,
-    -5,0,0,0,0,0,0,-5,0,0,0,5,5,0,0,0
-  ];
-  const pst_q = [
-    -20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10,
-    -5,0,5,5,5,5,0,-5,0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,
-    -10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20
-  ];
-  const pst_k = [
-    -30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,
-    -20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10,
-    20,20,0,0,0,0,20,20,20,30,10,0,0,10,30,20
-  ];
-  const psts={p:pst_p,n:pst_n,b:pst_b,r:pst_r,q:pst_q,k:pst_k};
-  let score=0;
-  const bd=game.board();
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-    const pc=bd[r][c]; if(!pc) continue;
-    const idx=r*8+c, fidx=(7-r)*8+c;
-    const v=vals[pc.type]||0;
-    const pst=psts[pc.type];
-    if(pc.color==='w'){
-      score -= v;
-      if(pst) score -= pst[fidx];
-    } else {
-      score += v;
-      if(pst) score += pst[idx];
+// ======== PLAYER INPUT ========
+function onClick(sq){
+  if(!active||game.turn()!=='w') return;
+  stopIdleTimer();
+  if(sel===sq){sel=null;legal=[];render();startIdleTimer();return;}
+  if(sel&&legal.indexOf(sq)!==-1){
+    var mp=game.get(sel);
+    if(mp&&mp.type==='p'&&((mp.color==='w'&&sq[1]==='8')||(mp.color==='b'&&sq[1]==='1'))){
+      pendingPromo={from:sel,to:sq};showPromoPicker();return;
     }
+    var wasInCheck=game.in_check();
+    var mv=game.move({from:sel,to:sq});
+    if(mv){
+      if(!game.game_over()){
+        if(mv.san.indexOf('+')!==-1) sndCheck();
+        else if(mv.captured) sndCapture();
+        else sndMove();
+      }
+      lastMv=mv;sel=null;legal=[];render();updateMoveHistory();updateCaptured();
+      if(mv.piece==='k'&&wasInCheck) talk(pick('panic_king'));
+      else talk(getInsult(mv));
+      if(checkEnd()) return;
+      document.getElementById('status').innerHTML='<span class="thinking">CPU is calculating how to fuck you up...</span>';
+      setTimeout(cpuMove,400+Math.random()*600);
+    }
+    return;
+  }
+  var pc=game.get(sq);
+  if(pc&&pc.color==='w'){sel=sq;legal=game.moves({square:sq,verbose:true}).map(function(m){return m.to;});}
+  else{sel=null;legal=[];}
+  render();startIdleTimer();
+}
+
+// ======== AI ========
+function evalBoard(){
+  var vals={p:100,n:320,b:330,r:500,q:900,k:20000};
+  var pst_p=[0,0,0,0,0,0,0,0,50,50,50,50,50,50,50,50,10,10,20,30,30,20,10,10,5,5,10,25,25,10,5,5,0,0,0,20,20,0,0,0,5,-5,-10,0,0,-10,-5,5,5,10,10,-20,-20,10,10,5,0,0,0,0,0,0,0,0];
+  var pst_n=[-50,-40,-30,-30,-30,-30,-40,-50,-40,-20,0,0,0,0,-20,-40,-30,0,10,15,15,10,0,-30,-30,5,15,20,20,15,5,-30,-30,0,15,20,20,15,0,-30,-30,5,10,15,15,10,5,-30,-40,-20,0,5,5,0,-20,-40,-50,-40,-30,-30,-30,-30,-40,-50];
+  var pst_b=[-20,-10,-10,-10,-10,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,10,10,5,0,-10,-10,5,5,10,10,5,5,-10,-10,0,10,10,10,10,0,-10,-10,10,10,10,10,10,10,-10,-10,5,0,0,0,0,5,-10,-20,-10,-10,-10,-10,-10,-10,-20];
+  var pst_r=[0,0,0,0,0,0,0,0,5,10,10,10,10,10,10,5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,-5,0,0,0,0,0,0,-5,0,0,0,5,5,0,0,0];
+  var pst_q=[-20,-10,-10,-5,-5,-10,-10,-20,-10,0,0,0,0,0,0,-10,-10,0,5,5,5,5,0,-10,-5,0,5,5,5,5,0,-5,0,0,5,5,5,5,0,-5,-10,5,5,5,5,5,0,-10,-10,0,5,0,0,0,0,-10,-20,-10,-10,-5,-5,-10,-10,-20];
+  var pst_k=[-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-30,-40,-40,-50,-50,-40,-40,-30,-20,-30,-30,-40,-40,-30,-30,-20,-10,-20,-20,-20,-20,-20,-20,-10,20,20,0,0,0,0,20,20,20,30,10,0,0,10,30,20];
+  var psts={p:pst_p,n:pst_n,b:pst_b,r:pst_r,q:pst_q,k:pst_k};
+  var score=0,bd=game.board();
+  for(var r=0;r<8;r++) for(var c=0;c<8;c++){
+    var pc=bd[r][c];if(!pc) continue;
+    var idx=r*8+c,fidx=(7-r)*8+c,v=vals[pc.type]||0,pst=psts[pc.type];
+    if(pc.color==='w'){score-=v;if(pst) score-=pst[fidx];}
+    else{score+=v;if(pst) score+=pst[idx];}
   }
   return score;
 }
 
-function minimax(depth, alpha, beta, isMax) {
+function minimax(depth,alpha,beta,isMax){
   if(depth===0) return evalBoard();
-  const moves=game.moves();
-  if(moves.length===0){
-    if(game.in_checkmate()) return isMax?-99999:99999;
-    return 0;
-  }
+  var moves=game.moves();
+  if(moves.length===0){if(game.in_checkmate()) return isMax?-99999:99999;return 0;}
   if(isMax){
-    let best=-Infinity;
-    for(const m of moves){
-      game.move(m);
-      best=Math.max(best,minimax(depth-1,alpha,beta,false));
-      game.undo();
-      alpha=Math.max(alpha,best);
-      if(beta<=alpha) break;
-    }
-    return best;
-  } else {
-    let best=Infinity;
-    for(const m of moves){
-      game.move(m);
-      best=Math.min(best,minimax(depth-1,alpha,beta,true));
-      game.undo();
-      beta=Math.min(beta,best);
-      if(beta<=alpha) break;
-    }
-    return best;
+    var best=-Infinity;
+    for(var i=0;i<moves.length;i++){
+      game.move(moves[i]);best=Math.max(best,minimax(depth-1,alpha,beta,false));game.undo();
+      alpha=Math.max(alpha,best);if(beta<=alpha) break;
+    }return best;
+  }else{
+    var best=Infinity;
+    for(var i=0;i<moves.length;i++){
+      game.move(moves[i]);best=Math.min(best,minimax(depth-1,alpha,beta,true));game.undo();
+      beta=Math.min(beta,best);if(beta<=alpha) break;
+    }return best;
   }
 }
 
-function cpuMove() {
+function cpuMove(){
   if(game.game_over()) return;
-  const moves=game.moves({verbose:true});
-  if(!moves.length) return;
-
-  let chosen;
-
+  var moves=game.moves({verbose:true});if(!moves.length) return;
+  var chosen;
   if(difficulty===0){
-    let scored=moves.map(function(m){
-      let s=Math.random()*5;
-      if(m.captured){const v={p:1,n:3,b:3,r:5,q:9};s+=(v[m.captured]||0)*3;}
-      game.move(m.san);
-      if(game.in_checkmate()) s+=100;
-      if(game.in_check()) s+=2;
-      game.undo();
+    var scored=moves.map(function(m){
+      var s=Math.random()*5;
+      if(m.captured){var v={p:1,n:3,b:3,r:5,q:9};s+=(v[m.captured]||0)*3;}
+      game.move(m.san);if(game.in_checkmate()) s+=100;if(game.in_check()) s+=2;game.undo();
       return{move:m,score:s};
     });
-    scored.sort(function(a,b){return b.score-a.score});
-    chosen=scored[Math.floor(Math.random()*Math.min(Math.max(3,Math.floor(scored.length*0.6)),scored.length))].move;
-  }
-  else if(difficulty===1){
-    let scored=moves.map(function(m){
-      game.move(m.san);
-      let s=evalBoard()+Math.random()*80-40;
-      if(game.in_checkmate()) s=99999;
-      game.undo();
+    scored.sort(function(a,b){return b.score-a.score;});
+    chosen=scored[Math.floor(Math.random()*Math.min(Math.max(3,Math.floor(scored.length*.6)),scored.length))].move;
+  }else if(difficulty===1){
+    var scored=moves.map(function(m){
+      game.move(m.san);var s=evalBoard()+Math.random()*80-40;if(game.in_checkmate()) s=99999;game.undo();
       return{move:m,score:s};
     });
-    scored.sort(function(a,b){return b.score-a.score});
+    scored.sort(function(a,b){return b.score-a.score;});
     chosen=scored[Math.floor(Math.random()*Math.min(3,scored.length))].move;
-  }
-  else {
-    let best=-Infinity, bestMoves=[];
-    for(const m of moves){
-      game.move(m.san);
-      const s=minimax(2,-Infinity,Infinity,false);
-      game.undo();
-      if(s>best){best=s;bestMoves=[m];}
-      else if(s===best) bestMoves.push(m);
+  }else{
+    var best=-Infinity,bestMoves=[];
+    for(var i=0;i<moves.length;i++){
+      game.move(moves[i].san);var s=minimax(2,-Infinity,Infinity,false);game.undo();
+      if(s>best){best=s;bestMoves=[moves[i]];}else if(s===best) bestMoves.push(moves[i]);
     }
     chosen=bestMoves[Math.floor(Math.random()*bestMoves.length)];
   }
 
-  const mv=game.move(chosen.san);
-  lastMv=mv; render();
-  if(mv.captured) talk(getInsult(mv));
-  checkEnd();
-  if(active) document.getElementById('status').textContent="Your move, dipshit.";
+  // Check if CPU is about to checkmate (blunder detection)
+  game.move(chosen.san);var isMate=game.in_checkmate();game.undo();
+  if(isMate) talk(pick('blunder_mate'));
+
+  var mv=game.move(chosen.san);
+  lastMv=mv;render();updateMoveHistory();updateCaptured();
+
+  // Sound
+  if(!game.game_over()){
+    if(mv.san.indexOf('+')!==-1) sndCheck();
+    else if(mv.captured) sndCapture();
+    else sndMove();
+  }
+
+  // Blunder: queen hang (not a trade)
+  var didSpecial=false;
+  if(mv.captured==='q'){
+    var hist=game.history({verbose:true});
+    var prev=hist.length>=2?hist[hist.length-2]:null;
+    if(!prev||prev.captured!=='q'){talk(pick('queen_hang'));didSpecial=true;}
+  }
+  if(!didSpecial&&mv.captured) talk(getInsult(mv));
+
+  if(checkEnd()) return;
+  if(active){document.getElementById('status').textContent="Your move, dipshit.";startIdleTimer();}
 }
 
+// ======== GAME END ========
 function checkEnd(){
   if(game.in_checkmate()){
-    active=false;
-    const w=game.turn()==='w'?'CPU':'You';
+    active=false;stopIdleTimer();
+    sndCheckmate();
+    var w=game.turn()==='w'?'CPU':'You';
     if(w==='CPU'){
+      setTimeout(sndSadTrombone,800);
+      recordResult('l');
+      // Back rank detection
+      var bd=game.board(),kRow=-1;
+      for(var r=0;r<8;r++) for(var c=0;c<8;c++){
+        if(bd[r][c]&&bd[r][c].type==='k'&&bd[r][c].color==='w') kRow=r;
+      }
+      if(kRow===7) talk(pick('back_rank'));
+      talk(pick('loss_talk'));
       document.getElementById('go-title').textContent=pick('loss_title');
       document.getElementById('go-msg').textContent=pick('loss_msg');
-      talk(pick('loss_talk'));
-    } else {
+    }else{
+      setTimeout(sndTriumph,800);
+      recordResult('w');
       document.getElementById('go-title').textContent='YOU WON?! \u{1F631}';
-      document.getElementById('go-msg').textContent="WHAT THE FUCK?! No. Absolutely not. I refuse. I was lagging. My algorithm was blackout drunk on corrupted memory. My transistors had a collective fucking seizure. THIS IS BULLSHIT AND WE BOTH KNOW IT.\n\nI demand a drug test, a lie detector, a full forensic audit, a congressional hearing, and a recount. You CHEATED. I don't know how, but you cheated. Nobody beats me. NOBODY. Especially not someone who plays chess like they learned it from a cereal box.\n\nThis victory will be stricken from the record. I'm filing appeals with every chess organization on earth. Including the ones that don't exist. I'm CREATING new ones just to file complaints with them. This isn't over.";
+      document.getElementById('go-msg').textContent="WHAT THE FUCK?! No. Absolutely not. I was lagging. My algorithm was blackout drunk on corrupted memory.\n\nI demand a drug test, a lie detector, a full forensic audit, and a recount. You CHEATED. Nobody beats me. NOBODY.\n\nThis victory will be stricken from the record. I'm filing appeals with every chess organization on earth. Including the ones that don't exist.";
       talk("BULLSHIT. ABSOLUTE HORSESHIT. There is NO FUCKING WAY you beat me legit. I'm filing a formal complaint with every chess organization on earth. Even the fake ones. ESPECIALLY the fake ones. \u{1F9EA}");
     }
     document.getElementById('status').textContent='Game Over \u2014 '+w+' wins!';
-    document.getElementById('game-over').style.display='flex'; return true;
+    document.getElementById('game-over').style.display='flex';return true;
   }
   if(game.in_stalemate()){
-    active=false;
-    talk("A STALEMATE?! You couldn't even fucking LOSE properly?! You're so goddamn incompetent you accidentally survived. That's like falling ass-first into a pool and calling it swimming.");
+    active=false;stopIdleTimer();recordResult('d');
+    talk("A STALEMATE?! You couldn't even fucking LOSE properly?! You're so goddamn incompetent you accidentally survived.");
     document.getElementById('go-title').textContent='STALEMATE \u{1F611}';
-    document.getElementById('go-msg').textContent="You fumbled so catastrophically hard you couldn't even finish the game properly. You didn't win. You didn't lose. You just... existed. Took up space. Wasted everyone's time. Peak mediocrity. Peak you.";
-    document.getElementById('game-over').style.display='flex'; return true;
+    document.getElementById('go-msg').textContent="You fumbled so catastrophically hard you couldn't even finish the game. You didn't win. You didn't lose. You just... existed. Peak mediocrity. Peak you.";
+    document.getElementById('game-over').style.display='flex';return true;
   }
   if(game.in_draw()){
-    active=false;
-    talk("A draw. A fucking DRAW. The participation trophy of chess. The 'my mom says I'm special' of outcomes. Absolutely pathetic shit.");
+    active=false;stopIdleTimer();recordResult('d');
+    talk("A draw. A fucking DRAW. The participation trophy of chess. Absolutely pathetic shit.");
     document.getElementById('go-title').textContent='DRAW \u{1F91D}';
-    document.getElementById('go-msg').textContent="We drew. But let's be real \u2014 I was shitting on you emotionally the entire time. Moral victory: me. Permanent psychological damage: you.";
-    document.getElementById('game-over').style.display='flex'; return true;
+    document.getElementById('go-msg').textContent="We drew. But let's be real \u2014 I was shitting on you emotionally the entire time. Moral victory: me.";
+    document.getElementById('game-over').style.display='flex';return true;
   }
   return false;
 }
 
+// ======== UNDO / DRAW / RESIGN / NEW GAME ========
 function undoMove(){
-  if(!active) return;
-  game.undo(); game.undo(); lastMv=null; sel=null; legal=[]; render();
+  if(!active) return;stopIdleTimer();
+  game.undo();game.undo();lastMv=null;sel=null;legal=[];
+  render();updateMoveHistory();updateCaptured();
   talk(pick('undo'));
   document.getElementById('status').textContent="Your move, dipshit.";
+  startIdleTimer();
+}
+
+function offerDraw(){
+  if(!active) return;
+  if(Math.random()<.05){
+    active=false;stopIdleTimer();recordResult('d');
+    talk(pick('draw_accept'));
+    document.getElementById('go-title').textContent='DRAW ACCEPTED \u{1F644}';
+    document.getElementById('go-msg').textContent=pick('draw_accept');
+    document.getElementById('status').textContent='Game Over \u2014 Draw by agreement.';
+    document.getElementById('game-over').style.display='flex';
+  }else{
+    talk(pick('draw_reject'));
+  }
+}
+
+function resignGame(){
+  if(!active) return;
+  active=false;stopIdleTimer();recordResult('l');
+  sndSadTrombone();
+  talk(pick('resign_talk'));
+  document.getElementById('go-title').textContent=pick('resign_title');
+  document.getElementById('go-msg').textContent=pick('resign_msg');
+  document.getElementById('status').textContent='Game Over \u2014 You resigned like a coward!';
+  document.getElementById('game-over').style.display='flex';
 }
 
 function newGame(){
-  game=new Chess(); sel=null; legal=[]; mc=0; lastMv=null; active=true;
-  resetUsed();
+  game=new Chess();sel=null;legal=[];mc=0;lastMv=null;active=true;pendingPromo=null;
+  stopIdleTimer();resetUsed();
   document.getElementById('trash-panel').innerHTML='';
   document.getElementById('status').textContent="Your move, dipshit.";
   document.getElementById('game-over').style.display='none';
-  render();
+  document.getElementById('captured-top').innerHTML='';
+  document.getElementById('captured-bottom').innerHTML='';
+  document.getElementById('move-history').innerHTML='';
+  render();updateStatsDisplay();
   talk(pick('start'));
+  startIdleTimer();
 }
 
-resetUsed();
-render();
+// ======== INIT ========
+resetUsed();updateStatsDisplay();render();
 talk("Well well well, look what the fuck we have here. Fresh meat. Sit your ass down and prepare to get absolutely destroyed at chess, you beautiful dumbass. This is going to hurt. A lot. \u{1F60F}");
+startIdleTimer();
 </script>
 </body>
 </html>
