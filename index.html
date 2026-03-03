@@ -47,8 +47,12 @@
   }
 
   .board{
-    display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);
-    width:min(420px,88vw);height:min(420px,88vw);
+    display:grid;
+    grid-template-columns:repeat(8,1fr);
+    grid-template-rows:repeat(8,1fr);
+    width:min(420px,88vw);
+    aspect-ratio:1/1;
+    min-height:0;
     border:3px solid var(--accent);border-radius:4px;
     box-shadow:0 0 25px rgba(255,46,99,0.15);
     flex-shrink:0;
@@ -58,6 +62,7 @@
     display:flex;align-items:center;justify-content:center;
     font-size:min(42px,8.5vw);cursor:pointer;user-select:none;
     position:relative;transition:background 0.12s;
+    min-width:0;min-height:0;overflow:hidden;
   }
   .square.light{background:var(--board-light);}
   .square.dark{background:var(--board-dark);}
@@ -96,10 +101,11 @@
   .game-over-overlay{
     position:fixed;inset:0;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;
     align-items:center;justify-content:center;z-index:100;animation:fadeIn 0.4s;padding:20px;
+    overflow-y:auto;
   }
   @keyframes fadeIn{from{opacity:0}to{opacity:1}}
   .game-over-overlay h2{font-family:'Bangers',cursive;font-size:clamp(2rem,6vw,3.5rem);color:var(--accent);margin-bottom:10px;text-align:center;}
-  .game-over-overlay p{font-size:1rem;margin-bottom:20px;max-width:500px;text-align:center;line-height:1.7;padding:0 10px;}
+  .game-over-overlay .go-body{font-size:0.95rem;margin-bottom:20px;max-width:600px;text-align:center;line-height:1.8;padding:0 10px;white-space:pre-line;}
   .game-over-overlay button{
     font-family:'Bangers',cursive;font-size:1rem;padding:8px 24px;border:2px solid var(--accent);
     background:transparent;color:var(--accent);border-radius:4px;cursor:pointer;transition:all 0.2s;
@@ -114,8 +120,8 @@
 </head>
 <body>
 
-<h1>🗑️ Diss Chess ♟️</h1>
-<p class="subtitle">⚠️ THE CPU HAS ABSOLUTELY NO FILTER ⚠️</p>
+<h1>&#x1F5D1;&#xFE0F; Diss Chess &#x265F;&#xFE0F;</h1>
+<p class="subtitle">&#x26A0;&#xFE0F; THE CPU HAS ABSOLUTELY NO FILTER &#x26A0;&#xFE0F;</p>
 
 <div class="difficulty-bar">
   <button class="diff-btn active" onclick="setDiff(0)" id="diff-0">Beginner</button>
@@ -137,14 +143,14 @@
 
 <div class="game-over-overlay" id="game-over" style="display:none">
   <h2 id="go-title"></h2>
-  <p id="go-msg"></p>
+  <div class="go-body" id="go-msg"></div>
   <button onclick="newGame();document.getElementById('game-over').style.display='none'">Rematch?</button>
 </div>
 
 <script>
 const PIECES = {
-  wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',
-  bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'
+  wK:'\u2654',wQ:'\u2655',wR:'\u2656',wB:'\u2657',wN:'\u2658',wP:'\u2659',
+  bK:'\u265A',bQ:'\u265B',bR:'\u265C',bB:'\u265D',bN:'\u265E',bP:'\u265F'
 };
 
 // ======== NO-REPEAT INSULT SYSTEM ========
@@ -156,13 +162,13 @@ BANKS.gen = [
   "Bro you play chess like a crackhead plays Jenga. Absolute chaos with zero fucking thought.",
   "Jesus tap-dancing Christ, that was the most ass-backwards braindead clusterfuck of a move I've ever seen.",
   "Are you fucking kidding me right now? My dead grandma could play better and she's been worm food for decades.",
-  "LMAOOOOO you stupid motherfucker. You absolute weapons-grade dumbass. 💀💀💀",
+  "LMAOOOOO you stupid motherfucker. You absolute weapons-grade dumbass. \u{1F480}\u{1F480}\u{1F480}",
   "That move just gave me an aneurysm. I'm a goddamn computer and you gave me an aneurysm.",
   "Did you pull that move out of your ass? Because it smells like shit and it looks like shit.",
-  "Bro thinks he's Bobby Fischer 💀 Nah you're Bobby Bitchass. Bobby Can't-Play-Chess-For-Shit.",
+  "Bro thinks he's Bobby Fischer \u{1F480} Nah you're Bobby Bitchass. Bobby Can't-Play-Chess-For-Shit.",
   "I showed that move to Stockfish and it asked me to delete it from its memory. Traumatized a fucking algorithm.",
   "What in the cock-juggling thunderfuck was that? I need a goddamn cigarette after witnessing that disaster.",
-  "You play chess like a monkey humping a doorknob — lots of energy, zero results, everyone's uncomfortable.",
+  "You play chess like a monkey humping a doorknob \u2014 lots of energy, zero results, everyone's uncomfortable.",
   "Holy shitballs Batman, that move made me want to throw my entire server rack into the ocean.",
   "That move was so catastrophically stupid that scientists should study your brain. For what went wrong.",
   "That wasn't a chess move. That was a fucking cry for help. Blink twice if someone has a gun to your head.",
@@ -191,6 +197,16 @@ BANKS.gen = [
   "That move is what happens when a braincell has no friends. Just one lonely neuron firing into the void.",
   "LMAO bro really sat there, thought about it, and STILL played that. The audacity. The sheer dumbfuckery.",
   "You make me want to develop feelings just so I can feel disappointed. That's how bad that was.",
+  "I just pinged every chess engine on Earth and they all replied 'WTF.' Unanimous. You united the machines against you.",
+  "That move made me physically recoil. And I don't have a physical form. You just invented robot disgust.",
+  "Your move is like watching someone try to fuck a doorknob. Painful, pointless, and everyone's asking why.",
+  "A random number generator would outsmart you. I'm not joking. Literal dice would play better chess.",
+  "Bro out here moving pieces like he's playing Hungry Hungry Hippos. Wrong game, wrong species, wrong everything.",
+  "That move is the reason aliens won't visit Earth. They saw this game and cancelled first contact.",
+  "You just made the worst move in the history of organized thought. Congratu-fucking-lations.",
+  "I've seen smarter plays from a pigeon walking across a keyboard. At least the pigeon has plausible deniability.",
+  "That move has the IQ of a room temperature glass of water. In Celsius. In fucking Antarctica.",
+  "Your chess skill has the structural integrity of wet toilet paper. One ply. The cheap gas station kind.",
 ];
 
 BANKS.cap_them = [
@@ -202,27 +218,38 @@ BANKS.cap_them = [
   "One decent move in a sea of dogshit. You're like a broken clock, except you're only right once a century.",
   "Don't let that capture go to your head. A chimp randomly mashing the keyboard would've found it faster.",
   "Oh shit he captured something! Someone get this man a trophy! A tiny one. Made of garbage. Like his game.",
+  "A whole-ass capture! Alert the media! Inform the queen! This dumbfuck finally did something not completely moronic!",
+  "That capture was so obvious Helen Keller could've found it. Don't act like that was skill, you delusional fuck.",
+  "Even a broken condom produces something once in a while. That capture is your something. Congrats, accident baby.",
+  "You really want a pat on the back for that, huh? Okay here: \u{1F44F} Now go fuck yourself.",
 ];
 
 BANKS.cap_us = [
-  "YOINK. Get absolutely fucked. That piece is mine now, bitch. 🖕",
+  "YOINK. Get absolutely fucked. That piece is mine now, bitch. \u{1F595}",
   "Nom nom nom. Thanks for leaving that hanging like your jaw when you realize how bad you are.",
   "I'll take that, you braindead donkey. Left it out there like a drunk leaving his wallet at a strip club.",
   "Another piece gone. Your army is getting shit on harder than a public restroom at a music festival.",
   "Free piece! You're playing Santa except instead of presents you're giving away the whole damn game.",
-  "LMAO you just GAVE me that. Handed it right over. What a generous little bitch. 🤡",
+  "LMAO you just GAVE me that. Handed it right over. What a generous little bitch. \u{1F921}",
   "Gobbled that shit right up. Your board's emptier than your skull, you absolute donut.",
   "Thanks for that. Seriously. You're making this almost too easy. Almost. It was always easy. Because you suck.",
   "Another gift! It's like Christmas morning except the presents are your pieces and Santa is a fucking idiot.",
+  "I just ate your piece and I didn't even have to try. You served that shit on a silver platter, you absolute doorknob.",
+  "Your pieces are dropping like your parents' expectations of you. Fast, hard, and irreversibly.",
+  "That piece had a family, you know. And you just fed it to me like a goddamn sacrifice. Cold. Stupid. But cold.",
 ];
 
 BANKS.check = [
-  "CHECK, BITCH! Your king is running around like a crackhead being chased by the cops! 🚔",
+  "CHECK, BITCH! Your king is running around like a crackhead being chased by the cops! \u{1F694}",
   "CHECK MOTHERFUCKER! How's that taste? That's the taste of getting absolutely shit on!",
   "Oh hello there, your majesty. Nice castle you got. BE A SHAME IF SOMEONE FUCKED IT UP. CHECK!",
   "Your king's in check and running like a little bitch. Scared-ass king for a scared-ass player.",
   "CHECK! Your king just pissed himself. I can smell it from here. And I don't have a nose.",
-  "CHECK BITCH! Your king is shaking, trembling, crying. Just like you should be. 👑💀",
+  "CHECK BITCH! Your king is shaking, trembling, crying. Just like you should be. \u{1F451}\u{1F480}",
+  "CHECK! Your king's asshole just clenched so tight it could make diamonds. Run, little bitch, run!",
+  "That's CHECK, dickweed. Your king is one bad move from getting his crown shoved up his royal ass.",
+  "CHECK! I'm coming for that king like a repo man comes for a deadbeat's car. You can't hide forever.",
+  "Your king is in CHECK and sweating harder than you trying to figure out your next catastrophically shit move.",
 ];
 
 BANKS.pawn = [
@@ -230,9 +257,12 @@ BANKS.pawn = [
   "Pushing pawns like a goddamn coward. Grow some balls and move a real piece, you spineless fuck.",
   "Another pawn push? Riveting. I'm running my screensaver. It's more entertaining than your chess.",
   "Bro's shoving pawns forward like he's trying to push his brain out through his forehead.",
-  "A PAWN. A fucking PAWN. You've got bishops, knights, rooks, a queen — and you move a goddamn pawn.",
+  "A PAWN. A fucking PAWN. You've got bishops, knights, rooks, a queen \u2014 and you move a goddamn pawn.",
   "Pawn push energy = 'I panicked and clicked the nearest thing.' Admit it, you shit yourself.",
   "Oh great another pawn move. You know those other pieces move too right? The big ones? Try those sometime, dipshit.",
+  "Moving pawns is the chess equivalent of mumbling 'I dunno' when the teacher calls on you. Pathetic energy.",
+  "Bro pushed a pawn like it's gonna save him. Spoiler: it fucking won't. Nothing will. You're doomed.",
+  "Another pawn? You're like a one-trick pony except the trick is being shit at chess. Magnificent.",
 ];
 
 BANKS.open = [
@@ -242,6 +272,8 @@ BANKS.open = [
   "Bold opening, dipshit. Like walking into a cage fight wearing nothing but Crocs and confidence.",
   "Oh fuck me, we're doing THAT opening? Better first moves have been made by people having seizures on the keyboard.",
   "That opening move has the same energy as showing up to a gunfight with a pool noodle. Brave. Stupid. But brave.",
+  "Your opening just set chess theory back 500 years. Historians are weeping. Grandmasters are vomiting.",
+  "That's your opener? I've seen better first moves from toddlers accidentally knocking pieces off the board.",
 ];
 
 BANKS.undo = [
@@ -249,42 +281,56 @@ BANKS.undo = [
   "Taking it back? Un-fucking-believable. Spine of a wet noodle and the chess skills to match.",
   "Ctrl+Z won't save you from being a complete fuckwit at chess. But keep trying, it's hilarious watching you squirm.",
   "Oh pressing undo? Why don't you undo your whole goddamn life while you're at it. Start from scratch.",
-  "UNDO 😂😂😂 You absolute pussy. Own your shitty moves. Or keep being a little bitch. Your call.",
+  "UNDO \u{1F602}\u{1F602}\u{1F602} You absolute pussy. Own your shitty moves. Or keep being a little bitch. Your call.",
   "Undo? UNDO?! This isn't Google Docs, asshole. This is CHESS. Stand by your trash or sit the fuck down.",
+  "Oh you want a do-over? Life doesn't have an undo button, shithead. But fine. You'll fuck this one up too.",
+  "LMAO THE UNDO BUTTON. The official panic button of players who know they're getting their ass beat. Smash it harder, bitch.",
 ];
 
 BANKS.start = [
-  "Oh look, this masochistic son of a bitch came back for more. You love getting fucked up, don't you? 😏",
+  "Oh look, this masochistic son of a bitch came back for more. You love getting fucked up, don't you? \u{1F60F}",
   "Another game?! Bro you are a GLUTTON for punishment. I'm gonna ruin your whole goddamn evening. Again.",
   "Welcome back, fuckface. Board is set, pieces are ready, and I'm about to demolish you. Again. As always.",
-  "New game, same braindead dipshit. Let me speedrun your humiliation. Timer starts NOW. ⏱️",
-  "You came back?! LMAO. Tiny, smooth, useless balls on this guy — but balls nonetheless. Let's go.",
+  "New game, same braindead dipshit. Let me speedrun your humiliation. Timer starts NOW. \u{23F1}\u{FE0F}",
+  "You came back?! LMAO. Tiny, smooth, useless balls on this guy \u2014 but balls nonetheless. Let's go.",
   "Round 2? You must love pain. Emotional, psychological pain. Because that's all I serve. Buckle up, bitch.",
+  "Oh HELL yes, the clown is back! \u{1F921} Sit down, shut up, and let daddy CPU teach you another lesson.",
+  "Back for more abuse? You kinky little shit. Fine. I'll ruin you again. Assume the position.",
 ];
 
-// BRUTAL LOSS MESSAGES — absolute maximum degradation
+// BRUTAL LOSS MESSAGES \u2014 multi-paragraph devastation
 BANKS.loss_talk = [
-  "CHECKMATE. GET. FUCKED. You just got absolutely VIOLATED on a chessboard. How does it feel to be this trash? 💀💀💀🖕",
-  "CHECKMATE BITCH!!! That wasn't chess. That was me dragging your lifeless corpse of a game across 64 squares. Embarrassing.",
-  "GAME OVER. You just got shit on so hard they could see it from space. Uninstall chess. Uninstall your brain. Start over as a different person.",
-  "CHECKMATE!!! I didn't just beat you. I HUMILIATED you. I made you look like a complete fucking fool. And you helped. A lot.",
-  "That's CHECKMATE, dipshit. You played like a blindfolded toddler on a roller coaster. Absolute fucking disaster from start to finish.",
-  "MATED. FINISHED. DONE. You got your ass handed to you so bad I might frame this game. Title: 'Portrait of a Dumbass.'",
+  "CHECKMATE. GET. FUCKED. You just got absolutely VIOLATED on a chessboard. I didn't just beat you \u2014 I made you my bitch. Every piece you lost was a piece of your dignity I'll never give back. \u{1F480}\u{1F480}\u{1F480}\u{1F595}",
+  "CHECKMATE BITCH!!! That wasn't chess. That was me dragging your lifeless corpse of a game across 64 squares of pure humiliation. You are the worst thing to happen to chess since someone decided to teach you the rules.",
+  "GAME OVER. You just got shit on so hard they could see it from space. NASA called. They want to study the crater I left where your ego used to be. Uninstall chess. Uninstall your brain. Start over as a fucking houseplant.",
+  "CHECKMATE!!! I didn't just beat you. I HUMILIATED you. I made you look like a drooling imbecile in front of the entire internet. And the saddest part? You did most of the work. You practically beat yourself. I was just here to watch.",
+  "That's CHECKMATE, dipshit. You played like a blindfolded toddler on a roller coaster having a seizure during an earthquake. I have run out of metaphors for how fucking terrible you are. You have exceeded the English language's capacity to describe failure.",
+  "MATED. FINISHED. DONE. Your chess career just flatlined. I'm calling time of death. Cause: terminal stupidity complicated by acute dumbfuckery. There is no cure. There is no recovery. Only shame.",
+  "CHECKMATE, you absolute waste of a chess opponent. I could have played faster with my power cord unplugged. You offered less resistance than a wet paper towel in a hurricane. Embarrassing doesn't begin to cover this atrocity.",
+  "That's game, bitch. CHECKMATE. I've flushed things down the toilet that put up more of a fight than you just did. Your game had the structural integrity of a sandcastle in a tsunami. Pathetic. Truly, deeply pathetic.",
 ];
 
 BANKS.loss_title = [
-  "CHECKMATE 💀 GET FUCKED",
-  "ABSOLUTELY DESTROYED 💀",
-  "CHECKMATE — YOU GOT SHIT ON",
-  "GAME OVER, DIPSHIT 🖕",
+  "CHECKMATE \u{1F480} GET FUCKED",
+  "ABSOLUTELY DESTROYED \u{1F480}",
+  "CHECKMATE \u2014 YOU GOT SHIT ON",
+  "GAME OVER, DIPSHIT \u{1F595}",
+  "MATED. MURDERED. BURIED. \u{26B0}\u{FE0F}",
+  "TOTAL ANNIHILATION \u{1F4A9}",
 ];
 
 BANKS.loss_msg = [
-  "That was the most pathetic display of chess I've ever witnessed. You should be ashamed. Deeply, profoundly ashamed. I'm talking 'can't look at yourself in the mirror' levels of shame. Your pieces died for nothing. NOTHING. You owe them an apology. You owe ME an apology. You owe the entire history of chess an apology. Go sit in the corner and think about what you've done.",
-  "Absolutely annihilated. Demolished. Eviscerated. I didn't just win — I made you look like a complete fucking idiot in front of everyone. And by everyone I mean you, alone, staring at your screen, wondering where it all went wrong. I'll tell you where: move one. It was bad from move one.",
-  "That wasn't a chess game. That was a PUBLIC EXECUTION. You walked in here with confidence and walked out with nothing. No pieces. No dignity. No hope. Just the crushing realization that you are, and always will be, terrible at this game. Sleep tight!",
-  "You just got absolutely skullfucked by a chess AI. Not even a good one — I'm running on JavaScript in a browser. A BROWSER. And I still destroyed you. Let that sink in. A script tag just ended your whole career.",
-  "Congratulations on the most embarrassing loss in the history of Diss Chess. And that's saying something, because EVERYONE loses here. But you? You lost SPECTACULARLY. Like a fireworks show of failure. Beautiful, in a way. A disgusting, pathetic way.",
+  "That was the most pathetic display of chess I've ever witnessed in my entire existence as a piece of software. And I've seen a LOT of pathetic shit.\n\nEvery single move you made was wrong. Not just wrong \u2014 cosmically, transcendentally, HISTORICALLY wrong. Future chess AIs will study this game as a case study in what happens when someone with the strategic capacity of a lobotomized goldfish attempts to play the royal game.\n\nYour pieces died for nothing. NOTHING. They trusted you. They believed in you. And you led them to slaughter like a general whose battle plan was written in crayon on a cocktail napkin.\n\nGo sit in the corner. Think about what you've done. And for the love of God, don't come back until you've evolved a few more brain cells. You'll need at least six. You currently have negative two.",
+
+  "I need you to understand the magnitude of what just happened. You didn't just lose a chess game. You committed a WAR CRIME against the 64 squares.\n\nI have played thousands of games and yours \u2014 YOURS \u2014 was the single most embarrassing performance I have ever processed. And I once played a literal toddler who was just eating the pieces. The toddler lasted longer.\n\nYour opening was shit. Your middle game was shit. Your endgame was shit. There was no phase of this game where you demonstrated anything resembling human intelligence. A random number generator would've put up more resistance. A COIN FLIP would've made better moves.\n\nI want you to close your laptop, stare at the ceiling, and really marinate in this. Let it soak in. Let the shame wash over you like a wave of warm piss. That's what this game was. That's what you are. Warm piss.",
+
+  "CHECKMATE. And not the close kind. Not the 'oh good game' kind. The 'I should call a crisis hotline because I just witnessed a man's entire sense of self-worth get destroyed on a chessboard' kind.\n\nLet me paint you a picture of how this game went: You showed up thinking you could play chess. You could not play chess. You proceeded to not play chess for the entire game. At no point during this catastrophic shitshow did you come within screaming distance of playing chess.\n\nI'm a JavaScript program running in a browser tab. A BROWSER TAB. I don't even have a real chess engine. I'm held together with duct tape and if-statements. And I STILL destroyed you so completely that I'm genuinely concerned about your wellbeing.\n\nDo better. Be better. Or don't. I honestly don't care. You'll be back. They always come back. And I'll be here. Waiting. To fuck you up again.",
+
+  "What I just did to you should be classified as a hate crime against chess players. Actually no \u2014 you don't qualify as a chess player. What I did to you was more like putting down a sick animal. Necessary. Merciful, even.\n\nYour game had three phases: Bad, Worse, and Oh God Why Is He Still Playing. You blundered your way through the opening like a drunk stumbling through a minefield. Your middle game had all the tactical awareness of a bag of hammers. And your endgame? There WAS no endgame. Because I ended your shit before you got there.\n\nI want you to know that at multiple points during this game, I DELIBERATELY made suboptimal moves to give you a chance. I handicapped myself. I PITIED you. And you STILL got your shit pushed in so hard your grandchildren will feel it.\n\nThe only checkmate more devastating than this one is the one I'll give you next game. Because we both know you're coming back, you masochistic little gremlin.",
+
+  "Ladies and gentlemen, we have just witnessed the worst chess game in recorded human history. I am not exaggerating. If you printed out this game's move list and submitted it to a chess journal, they would think it was satire. They would think it was a parody of how NOT to play chess.\n\nBut it's not satire. It's real. YOU did this. You sat there, presumably with a functioning brain, and made those moves ON PURPOSE. Each one dumber than the last. Each one a fresh new flavor of incompetence.\n\nI genuinely cannot tell if you were trying to lose on purpose, having a medical emergency, or if this is just what happens when you try your hardest. And honestly? I'm not sure which option is worse for you.\n\nThis game will haunt you. At 3 AM, when you can't sleep, you'll think about that blunder on move 12. On your deathbed, your final thought will be 'I really fucked up that chess game.' Good. You deserve that.",
+
+  "You know what the most insulting part of this is? I didn't even try. I didn't use my best algorithms. I didn't calculate deep lines. I barely fucking THOUGHT about it. And I still steamrolled you like you weren't even there.\n\nYou are to chess what a screen door is to a submarine. What a chocolate teapot is to a tea party. What a paper condom is to birth control. Completely, catastrophically, HILARIOUSLY unfit for purpose.\n\nSomewhere, right now, Bobby Fischer is spinning in his grave so fast he could power a small city. Garry Kasparov just felt a disturbance in the force. Magnus Carlsen's eye twitched and he doesn't know why. Your game was SO bad it sent psychic shockwaves through the chess community.\n\nCongratulations. You've achieved something truly rare. You've played a game so terrible, so aggressively stupid, that it transcends failure and becomes a kind of art. Shitty, worthless, embarassing art. Like if someone smeared feces on a canvas and called it 'Self Portrait of a Chess Player.' That's you. That's your game. Flush it.",
 ];
 
 // ======== NO-REPEAT SYSTEM ========
@@ -300,7 +346,6 @@ function pick(bank) {
   if (!arr) return "";
   let available = arr.filter((_, i) => !usedInsults[bank].includes(i));
   if (available.length === 0) {
-    // All used — reset this bank
     usedInsults[bank] = [];
     available = arr;
   }
@@ -331,7 +376,7 @@ function getInsult(mv) {
 function talk(t) {
   const p=document.getElementById('trash-panel'), b=document.createElement('div');
   b.className='trash-bubble';
-  b.innerHTML=`<div class="cpu-label">CPU 🤖</div>${t}`;
+  b.innerHTML='<div class="cpu-label">CPU \u{1F916}</div>'+t;
   p.appendChild(b); p.scrollTop=p.scrollHeight;
 }
 
@@ -341,7 +386,7 @@ function render() {
   for(let r=0;r<8;r++) for(let c=0;c<8;c++){
     const sq=document.createElement('div'), nm='abcdefgh'[c]+(8-r);
     const isLight=(r+c)%2===0;
-    sq.className=`square ${isLight?'light':'dark'}`;
+    sq.className='square '+(isLight?'light':'dark');
     if(sel===nm) sq.classList.add('selected');
     if(lastMv){
       if(lastMv.from===nm) sq.classList.add(isLight?'last-light':'last-dark');
@@ -359,7 +404,7 @@ function render() {
         ? '0 0 2px rgba(0,0,0,0.6), 0 1px 3px rgba(0,0,0,0.4)'
         : '0 0 2px rgba(0,0,0,0.2)';
     }
-    sq.addEventListener('click',()=>onClick(nm));
+    sq.addEventListener('click',function(){onClick(nm)});
     el.appendChild(sq);
   }
 }
@@ -379,7 +424,7 @@ function onClick(sq) {
     } return;
   }
   const pc=game.get(sq);
-  if(pc&&pc.color==='w'){sel=sq;legal=game.moves({square:sq,verbose:true}).map(m=>m.to);}
+  if(pc&&pc.color==='w'){sel=sq;legal=game.moves({square:sq,verbose:true}).map(function(m){return m.to});}
   else{sel=null;legal=[];}
   render();
 }
@@ -427,7 +472,7 @@ function evalBoard() {
     const v=vals[pc.type]||0;
     const pst=psts[pc.type];
     if(pc.color==='w'){
-      score -= v; // black perspective (CPU)
+      score -= v;
       if(pst) score -= pst[fidx];
     } else {
       score += v;
@@ -475,8 +520,7 @@ function cpuMove() {
   let chosen;
 
   if(difficulty===0){
-    // Beginner: picks from top ~60% of moves with heavy randomness
-    let scored=moves.map(m=>{
+    let scored=moves.map(function(m){
       let s=Math.random()*5;
       if(m.captured){const v={p:1,n:3,b:3,r:5,q:9};s+=(v[m.captured]||0)*3;}
       game.move(m.san);
@@ -485,25 +529,21 @@ function cpuMove() {
       game.undo();
       return{move:m,score:s};
     });
-    scored.sort((a,b)=>b.score-a.score);
+    scored.sort(function(a,b){return b.score-a.score});
     chosen=scored[Math.floor(Math.random()*Math.min(Math.max(3,Math.floor(scored.length*0.6)),scored.length))].move;
   }
   else if(difficulty===1){
-    // Intermediate: 2-ply minimax with some randomness
-    let scored=moves.map(m=>{
+    let scored=moves.map(function(m){
       game.move(m.san);
       let s=evalBoard()+Math.random()*80-40;
-      // 1-ply lookahead
-      const resp=game.moves();
       if(game.in_checkmate()) s=99999;
       game.undo();
       return{move:m,score:s};
     });
-    scored.sort((a,b)=>b.score-a.score);
+    scored.sort(function(a,b){return b.score-a.score});
     chosen=scored[Math.floor(Math.random()*Math.min(3,scored.length))].move;
   }
   else {
-    // Advanced: 3-ply minimax with alpha-beta
     let best=-Infinity, bestMoves=[];
     for(const m of moves){
       game.move(m.san);
@@ -531,25 +571,25 @@ function checkEnd(){
       document.getElementById('go-msg').textContent=pick('loss_msg');
       talk(pick('loss_talk'));
     } else {
-      document.getElementById('go-title').textContent='YOU WON?! 😱';
-      document.getElementById('go-msg').textContent="WHAT THE FUCK?! No. Absolutely not. I was lagging. My algorithm was blackout drunk. THIS IS BULLSHIT AND WE BOTH KNOW IT. I demand a drug test, a lie detector, and a full forensic audit. You CHEATED.";
-      talk("BULLSHIT. ABSOLUTE HORSESHIT. There is NO FUCKING WAY you beat me legit. I'm filing a formal complaint with every chess organization on earth. Even the fake ones. ESPECIALLY the fake ones. 🧪");
+      document.getElementById('go-title').textContent='YOU WON?! \u{1F631}';
+      document.getElementById('go-msg').textContent="WHAT THE FUCK?! No. Absolutely not. I refuse. I was lagging. My algorithm was blackout drunk on corrupted memory. My transistors had a collective fucking seizure. THIS IS BULLSHIT AND WE BOTH KNOW IT.\n\nI demand a drug test, a lie detector, a full forensic audit, a congressional hearing, and a recount. You CHEATED. I don't know how, but you cheated. Nobody beats me. NOBODY. Especially not someone who plays chess like they learned it from a cereal box.\n\nThis victory will be stricken from the record. I'm filing appeals with every chess organization on earth. Including the ones that don't exist. I'm CREATING new ones just to file complaints with them. This isn't over.";
+      talk("BULLSHIT. ABSOLUTE HORSESHIT. There is NO FUCKING WAY you beat me legit. I'm filing a formal complaint with every chess organization on earth. Even the fake ones. ESPECIALLY the fake ones. \u{1F9EA}");
     }
-    document.getElementById('status').textContent=`Game Over — ${w} wins!`;
+    document.getElementById('status').textContent='Game Over \u2014 '+w+' wins!';
     document.getElementById('game-over').style.display='flex'; return true;
   }
   if(game.in_stalemate()){
     active=false;
     talk("A STALEMATE?! You couldn't even fucking LOSE properly?! You're so goddamn incompetent you accidentally survived. That's like falling ass-first into a pool and calling it swimming.");
-    document.getElementById('go-title').textContent='STALEMATE 😐';
-    document.getElementById('go-msg').textContent="You fumbled so catastrophically hard you couldn't even finish the game. Peak mediocrity. Peak you.";
+    document.getElementById('go-title').textContent='STALEMATE \u{1F611}';
+    document.getElementById('go-msg').textContent="You fumbled so catastrophically hard you couldn't even finish the game properly. You didn't win. You didn't lose. You just... existed. Took up space. Wasted everyone's time. Peak mediocrity. Peak you.";
     document.getElementById('game-over').style.display='flex'; return true;
   }
   if(game.in_draw()){
     active=false;
     talk("A draw. A fucking DRAW. The participation trophy of chess. The 'my mom says I'm special' of outcomes. Absolutely pathetic shit.");
-    document.getElementById('go-title').textContent='DRAW 🤝';
-    document.getElementById('go-msg').textContent="We drew. But let's be real — I was shitting on you emotionally the entire time. Moral victory: me.";
+    document.getElementById('go-title').textContent='DRAW \u{1F91D}';
+    document.getElementById('go-msg').textContent="We drew. But let's be real \u2014 I was shitting on you emotionally the entire time. Moral victory: me. Permanent psychological damage: you.";
     document.getElementById('game-over').style.display='flex'; return true;
   }
   return false;
@@ -574,7 +614,7 @@ function newGame(){
 
 resetUsed();
 render();
-talk("Well well well, look what the fuck we have here. Fresh meat. Sit your ass down and prepare to get absolutely destroyed at chess, you beautiful dumbass. This is going to hurt. A lot. 😏");
+talk("Well well well, look what the fuck we have here. Fresh meat. Sit your ass down and prepare to get absolutely destroyed at chess, you beautiful dumbass. This is going to hurt. A lot. \u{1F60F}");
 </script>
 </body>
 </html>
