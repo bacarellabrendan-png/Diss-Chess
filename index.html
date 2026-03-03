@@ -108,6 +108,39 @@
     color:#fff;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;
   }
   .promo-piece:hover{background:var(--accent);transform:scale(1.1);}
+  .disclaimer-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.97);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;z-index:9999;padding:20px;overflow-y:auto;
+  }
+  .disclaimer-box{
+    max-width:520px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;gap:16px;
+  }
+  .disclaimer-box h2{
+    font-family:'Bangers',cursive;font-size:clamp(2rem,6vw,3rem);letter-spacing:3px;
+    background:linear-gradient(135deg,var(--accent),#ff6b35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .disclaimer-box p{
+    font-size:.9rem;line-height:1.8;color:#bbb;padding:0 10px;
+  }
+  .disclaimer-check{
+    display:flex;align-items:center;gap:10px;margin:6px 0;cursor:pointer;font-size:.82rem;color:#999;
+  }
+  .disclaimer-check input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer;}
+  .disclaimer-enter{
+    font-family:'Bangers',cursive;font-size:1.2rem;letter-spacing:2px;padding:12px 36px;
+    border:2px solid var(--accent);background:transparent;color:var(--accent);border-radius:6px;
+    cursor:pointer;transition:all .3s;opacity:.35;pointer-events:none;
+  }
+  .disclaimer-enter.enabled{opacity:1;pointer-events:auto;}
+  .disclaimer-enter.enabled:hover{background:var(--accent);color:var(--bg);transform:scale(1.05);box-shadow:0 0 20px rgba(255,46,99,.4);}
+  .disclaimer-soft{
+    margin-top:4px;font-size:.75rem;color:#555;text-decoration:none;transition:color .2s;cursor:pointer;
+  }
+  .disclaimer-soft:hover{color:var(--accent2);}
+  .site-footer{
+    margin-top:auto;padding:20px 15px 12px;text-align:center;font-size:.6rem;color:#333;
+    letter-spacing:.5px;max-width:600px;line-height:1.6;
+  }
   @media(max-width:700px){
     .game-container{flex-direction:column;align-items:center;}
     .board-col{width:calc(100vw - 20px);}
@@ -122,6 +155,17 @@
 </style>
 </head>
 <body>
+
+<div class="disclaimer-overlay" id="disclaimer">
+  <div class="disclaimer-box">
+    <h2>&#x26A0;&#xFE0F; WARNING &#x26A0;&#xFE0F;</h2>
+    <p>Diss Chess contains <strong style="color:var(--accent)">extremely vulgar, offensive, and deliberately over-the-top trash talk.</strong> The insults are generated for comedic and entertainment purposes only and are not meant to be taken seriously or personally.</p>
+    <p>By clicking "I Can Handle It" you acknowledge that you have a sense of humor and won't cry about it. <strong style="color:var(--accent)">If you are easily offended, this game is absolutely not for you.</strong></p>
+    <label class="disclaimer-check"><input type="checkbox" id="disclaimer-cb" onchange="document.getElementById('disclaimer-go').classList.toggle('enabled',this.checked)">I understand this is all jokes and I won't sue anyone</label>
+    <button class="disclaimer-enter" id="disclaimer-go" onclick="document.getElementById('disclaimer').style.display='none'">I Can Handle It &#x1F525;</button>
+    <a class="disclaimer-soft" href="https://www.chess.com" rel="noopener">Nah I'm Too Soft</a>
+  </div>
+</div>
 
 <h1>&#x1F5D1;&#xFE0F; Diss Chess &#x265F;&#xFE0F;</h1>
 <p class="subtitle">&#x26A0;&#xFE0F; THE CPU HAS ABSOLUTELY NO FILTER &#x26A0;&#xFE0F;</p>
@@ -771,9 +815,63 @@ function evalBoard(){
   return score;
 }
 
+function orderMoves(moves){
+  // Score moves for better alpha-beta pruning: captures first (MVV-LVA), then checks, then rest
+  var capVal={p:1,n:3,b:3,r:5,q:9};
+  var scored=[];
+  for(var i=0;i<moves.length;i++){
+    var m=moves[i],s=0;
+    game.move(m);
+    if(game.in_checkmate()) s=100000;
+    else if(game.in_check()) s=500;
+    game.undo();
+    if(typeof m==='object'&&m.captured) s+=capVal[m.captured]*10-(capVal[m.piece]||0);
+    else if(typeof m==='string'){
+      // SAN string — check for 'x' indicating capture
+      if(m.indexOf('x')!==-1) s+=50;
+    }
+    scored.push({m:m,s:s});
+  }
+  scored.sort(function(a,b){return b.s-a.s;});
+  return scored.map(function(x){return x.m;});
+}
+
+function quiesce(alpha,beta,isMax,depthLeft){
+  // Quiescence search: evaluate captures to avoid horizon effect
+  var standPat=evalBoard();
+  if(depthLeft<=0) return standPat;
+  if(isMax){
+    if(standPat>=beta) return beta;
+    if(standPat>alpha) alpha=standPat;
+    var moves=game.moves({verbose:true});
+    for(var i=0;i<moves.length;i++){
+      if(!moves[i].captured) continue;
+      game.move(moves[i].san);
+      var s=quiesce(alpha,beta,false,depthLeft-1);
+      game.undo();
+      if(s>=beta) return beta;
+      if(s>alpha) alpha=s;
+    }
+    return alpha;
+  }else{
+    if(standPat<=alpha) return alpha;
+    if(standPat<beta) beta=standPat;
+    var moves=game.moves({verbose:true});
+    for(var i=0;i<moves.length;i++){
+      if(!moves[i].captured) continue;
+      game.move(moves[i].san);
+      var s=quiesce(alpha,beta,true,depthLeft-1);
+      game.undo();
+      if(s<=alpha) return alpha;
+      if(s<beta) beta=s;
+    }
+    return beta;
+  }
+}
+
 function minimax(depth,alpha,beta,isMax){
-  if(depth===0) return evalBoard();
-  var moves=game.moves();
+  if(depth===0) return quiesce(alpha,beta,isMax,6);
+  var moves=orderMoves(game.moves());
   if(moves.length===0){if(game.in_checkmate()) return isMax?-99999:99999;return 0;}
   if(isMax){
     var best=-Infinity;
@@ -795,25 +893,35 @@ function cpuMove(){
   var moves=game.moves({verbose:true});if(!moves.length) return;
   var chosen;
   if(difficulty===0){
+    // Beginner: 2-ply minimax with noise — plays real chess but makes occasional mistakes
     var scored=moves.map(function(m){
-      var s=Math.random()*5;
-      if(m.captured){var v={p:1,n:3,b:3,r:5,q:9};s+=(v[m.captured]||0)*3;}
-      game.move(m.san);if(game.in_checkmate()) s+=100;if(game.in_check()) s+=2;game.undo();
+      game.move(m.san);
+      var s;
+      if(game.in_checkmate()) s=99999;
+      else s=minimax(1,-Infinity,Infinity,false)+Math.random()*120-60;
+      game.undo();
       return{move:m,score:s};
     });
     scored.sort(function(a,b){return b.score-a.score;});
-    chosen=scored[Math.floor(Math.random()*Math.min(Math.max(3,Math.floor(scored.length*.6)),scored.length))].move;
+    // Pick from top 2 to add slight unpredictability
+    chosen=scored[Math.floor(Math.random()*Math.min(2,scored.length))].move;
   }else if(difficulty===1){
+    // Intermediate: 3-ply minimax with minor noise — strong tactical play
     var scored=moves.map(function(m){
-      game.move(m.san);var s=evalBoard()+Math.random()*80-40;if(game.in_checkmate()) s=99999;game.undo();
+      game.move(m.san);
+      var s;
+      if(game.in_checkmate()) s=99999;
+      else s=minimax(2,-Infinity,Infinity,false)+Math.random()*40-20;
+      game.undo();
       return{move:m,score:s};
     });
     scored.sort(function(a,b){return b.score-a.score;});
-    chosen=scored[Math.floor(Math.random()*Math.min(3,scored.length))].move;
+    chosen=scored[0].move;
   }else{
+    // Advanced: 4-ply minimax with quiescence, move ordering, zero noise — maximum strength
     var best=-Infinity,bestMoves=[];
     for(var i=0;i<moves.length;i++){
-      game.move(moves[i].san);var s=minimax(2,-Infinity,Infinity,false);game.undo();
+      game.move(moves[i].san);var s=minimax(3,-Infinity,Infinity,false);game.undo();
       if(s>best){best=s;bestMoves=[moves[i]];}else if(s===best) bestMoves.push(moves[i]);
     }
     chosen=bestMoves[Math.floor(Math.random()*bestMoves.length)];
@@ -961,5 +1069,7 @@ resetUsed();updateStatsDisplay();render();
 talk("Well well well, look what the fuck we have here. Fresh meat. Sit your ass down and prepare to get absolutely destroyed at chess, you beautiful dumbass. This is going to hurt. A lot. \u{1F60F}");
 startIdleTimer();
 </script>
+
+<footer class="site-footer">All trash talk is satirical and for entertainment purposes only. Diss Chess is not responsible for hurt feelings, bruised egos, or existential crises.</footer>
 </body>
 </html>
