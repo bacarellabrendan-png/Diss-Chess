@@ -652,14 +652,14 @@ function updateMoveHistory(){
 // ======== IDLE TIMER ========
 var idleInterval=null,idleSec=0,idleFired={};
 function startIdleTimer(){
-  stopIdleTimer();idleSec=0;idleFired={15:false,30:false,45:false,60:false};
+  stopIdleTimer();idleSec=0;idleFired={60:false,90:false,120:false,150:false};
   idleInterval=setInterval(function(){
     if(!active||game.turn()!=='w') return;
     idleSec++;
-    if(idleSec>=60&&!idleFired[60]){idleFired[60]=true;talk(pick('idle_60'));gtag('event','idle_taunt',{idle_seconds:60});}
-    else if(idleSec>=45&&!idleFired[45]){idleFired[45]=true;talk(pick('idle_45'));gtag('event','idle_taunt',{idle_seconds:45});}
-    else if(idleSec>=30&&!idleFired[30]){idleFired[30]=true;talk(pick('idle_30'));gtag('event','idle_taunt',{idle_seconds:30});}
-    else if(idleSec>=15&&!idleFired[15]){idleFired[15]=true;talk(pick('idle_15'));gtag('event','idle_taunt',{idle_seconds:15});}
+    if(idleSec>=150&&!idleFired[150]){idleFired[150]=true;talk(pick('idle_60'));gtag('event','idle_taunt',{idle_seconds:150});}
+    else if(idleSec>=120&&!idleFired[120]){idleFired[120]=true;talk(pick('idle_45'));gtag('event','idle_taunt',{idle_seconds:120});}
+    else if(idleSec>=90&&!idleFired[90]){idleFired[90]=true;talk(pick('idle_30'));gtag('event','idle_taunt',{idle_seconds:90});}
+    else if(idleSec>=60&&!idleFired[60]){idleFired[60]=true;talk(pick('idle_15'));gtag('event','idle_taunt',{idle_seconds:60});}
   },1000);
 }
 function stopIdleTimer(){if(idleInterval){clearInterval(idleInterval);idleInterval=null;}}
