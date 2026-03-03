@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-6LP97PWZYB"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-6LP97PWZYB');
+</script>
 <title>Diss Chess</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
@@ -604,20 +612,23 @@ function startIdleTimer(){
   idleInterval=setInterval(function(){
     if(!active||game.turn()!=='w') return;
     idleSec++;
-    if(idleSec>=60&&!idleFired[60]){idleFired[60]=true;talk(pick('idle_60'));}
-    else if(idleSec>=45&&!idleFired[45]){idleFired[45]=true;talk(pick('idle_45'));}
-    else if(idleSec>=30&&!idleFired[30]){idleFired[30]=true;talk(pick('idle_30'));}
-    else if(idleSec>=15&&!idleFired[15]){idleFired[15]=true;talk(pick('idle_15'));}
+    if(idleSec>=60&&!idleFired[60]){idleFired[60]=true;talk(pick('idle_60'));gtag('event','idle_taunt',{idle_seconds:60});}
+    else if(idleSec>=45&&!idleFired[45]){idleFired[45]=true;talk(pick('idle_45'));gtag('event','idle_taunt',{idle_seconds:45});}
+    else if(idleSec>=30&&!idleFired[30]){idleFired[30]=true;talk(pick('idle_30'));gtag('event','idle_taunt',{idle_seconds:30});}
+    else if(idleSec>=15&&!idleFired[15]){idleFired[15]=true;talk(pick('idle_15'));gtag('event','idle_taunt',{idle_seconds:15});}
   },1000);
 }
 function stopIdleTimer(){if(idleInterval){clearInterval(idleInterval);idleInterval=null;}}
 
 // ======== GAME STATE ========
 var game=new Chess(),sel=null,legal=[],mc=0,lastMv=null,active=true,difficulty=0,pendingPromo=null;
+var diffLabels=['Beginner','Intermediate','Advanced'];
+function gtagDiff(){return diffLabels[difficulty]||'Unknown';}
 
 function setDiff(d){
   difficulty=d;
   document.querySelectorAll('.diff-btn').forEach(function(b,i){b.classList.toggle('active',i===d);});
+  gtag('event','difficulty_change',{difficulty_level:gtagDiff()});
   updateStatsDisplay();newGame();
 }
 
@@ -844,6 +855,7 @@ function checkEnd(){
     if(w==='CPU'){
       setTimeout(sndSadTrombone,800);
       recordResult('l');
+      gtag('event','game_over_checkmate_loss',{difficulty_level:gtagDiff()});
       // Back rank detection
       var bd=game.board(),kRow=-1;
       for(var r=0;r<8;r++) for(var c=0;c<8;c++){
@@ -857,6 +869,7 @@ function checkEnd(){
     }else{
       setTimeout(sndTriumph,800);
       recordResult('w');
+      gtag('event','game_over_checkmate_win',{difficulty_level:gtagDiff()});
       document.getElementById('go-title').textContent='YOU WON?! \u{1F631}';
       document.getElementById('go-sub').textContent='';
       document.getElementById('go-msg').textContent="WHAT THE FUCK?! No. Absolutely not. I was lagging. My algorithm was blackout drunk on corrupted memory.\n\nI demand a drug test, a lie detector, a full forensic audit, and a recount. You CHEATED. Nobody beats me. NOBODY.\n\nThis victory will be stricken from the record. I'm filing appeals with every chess organization on earth. Including the ones that don't exist.";
@@ -867,6 +880,7 @@ function checkEnd(){
   }
   if(game.in_stalemate()){
     active=false;stopIdleTimer();recordResult('d');
+    gtag('event','game_over_stalemate',{difficulty_level:gtagDiff()});
     talk("A STALEMATE?! You couldn't even fucking LOSE properly?! You're so goddamn incompetent you accidentally survived.");
     document.getElementById('go-title').textContent='STALEMATE \u{1F611}';
     document.getElementById('go-sub').textContent='';
@@ -875,6 +889,7 @@ function checkEnd(){
   }
   if(game.in_draw()){
     active=false;stopIdleTimer();recordResult('d');
+    gtag('event','game_over_draw',{difficulty_level:gtagDiff()});
     talk("A draw. A fucking DRAW. The participation trophy of chess. Absolutely pathetic shit.");
     document.getElementById('go-title').textContent='DRAW \u{1F91D}';
     document.getElementById('go-sub').textContent='';
@@ -889,6 +904,7 @@ function undoMove(){
   if(!active) return;stopIdleTimer();
   game.undo();game.undo();lastMv=null;sel=null;legal=[];
   render();updateMoveHistory();updateCaptured();
+  gtag('event','undo_move',{difficulty_level:gtagDiff()});
   talk(pick('undo'));
   document.getElementById('status').textContent="Your move, dipshit.";
   startIdleTimer();
@@ -896,8 +912,10 @@ function undoMove(){
 
 function offerDraw(){
   if(!active) return;
+  gtag('event','draw_offered',{difficulty_level:gtagDiff()});
   if(Math.random()<.05){
     active=false;stopIdleTimer();recordResult('d');
+    gtag('event','game_over_draw',{difficulty_level:gtagDiff(),draw_type:'agreement'});
     talk(pick('draw_accept'));
     document.getElementById('go-title').textContent='DRAW ACCEPTED \u{1F644}';
     document.getElementById('go-sub').textContent='';
@@ -912,6 +930,7 @@ function offerDraw(){
 function resignGame(){
   if(!active) return;
   active=false;stopIdleTimer();recordResult('l');
+  gtag('event','game_over_resign',{difficulty_level:gtagDiff()});
   sndSadTrombone();
   talk(pick('resign_talk'));
   document.getElementById('go-title').textContent=pick('resign_title');
@@ -924,6 +943,7 @@ function resignGame(){
 function newGame(){
   game=new Chess();sel=null;legal=[];mc=0;lastMv=null;active=true;pendingPromo=null;
   stopIdleTimer();resetUsed();
+  gtag('event','game_start',{difficulty_level:gtagDiff()});
   document.getElementById('trash-panel').innerHTML='';
   document.getElementById('status').textContent="Your move, dipshit.";
   document.getElementById('game-over').style.display='none';
