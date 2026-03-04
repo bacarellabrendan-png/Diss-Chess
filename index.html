@@ -1226,18 +1226,14 @@ function evalBoard(){
 }
 
 function orderMoves(moves){
-  // Score moves for better alpha-beta pruning: captures first (MVV-LVA), then checks, then rest
+  // Fast move ordering using SAN strings only — no game.move/undo
   var capVal={p:1,n:3,b:3,r:5,q:9};
   var scored=[];
   for(var i=0;i<moves.length;i++){
     var m=moves[i],s=0;
-    game.move(m);
-    if(game.in_checkmate()) s=100000;
-    else if(game.in_check()) s=500;
-    game.undo();
-    if(typeof m==='object'&&m.captured) s+=capVal[m.captured]*10-(capVal[m.piece]||0);
-    else if(typeof m==='string'){
-      // SAN string — check for 'x' indicating capture
+    if(typeof m==='string'){
+      if(m.indexOf('#')!==-1) s=100000;
+      else if(m.indexOf('+')!==-1) s=500;
       if(m.indexOf('x')!==-1) s+=50;
     }
     scored.push({m:m,s:s});
@@ -1246,43 +1242,10 @@ function orderMoves(moves){
   return scored.map(function(x){return x.m;});
 }
 
-function quiesce(alpha,beta,isMax,depthLeft){
-  // Quiescence search: evaluate captures to avoid horizon effect
-  var standPat=evalBoard();
-  if(depthLeft<=0||Date.now()>searchDeadline) return standPat;
-  if(isMax){
-    if(standPat>=beta) return beta;
-    if(standPat>alpha) alpha=standPat;
-    var moves=game.moves({verbose:true});
-    for(var i=0;i<moves.length;i++){
-      if(!moves[i].captured) continue;
-      game.move(moves[i].san);
-      var s=quiesce(alpha,beta,false,depthLeft-1);
-      game.undo();
-      if(s>=beta) return beta;
-      if(s>alpha) alpha=s;
-    }
-    return alpha;
-  }else{
-    if(standPat<=alpha) return alpha;
-    if(standPat<beta) beta=standPat;
-    var moves=game.moves({verbose:true});
-    for(var i=0;i<moves.length;i++){
-      if(!moves[i].captured) continue;
-      game.move(moves[i].san);
-      var s=quiesce(alpha,beta,true,depthLeft-1);
-      game.undo();
-      if(s<=alpha) return alpha;
-      if(s<beta) beta=s;
-    }
-    return beta;
-  }
-}
-
-var searchDeadline=0;
+var searchNodes=0;
 function minimax(depth,alpha,beta,isMax){
-  if(Date.now()>searchDeadline) return evalBoard();
-  if(depth===0) return quiesce(alpha,beta,isMax,4);
+  searchNodes++;
+  if(depth===0) return evalBoard();
   var moves=orderMoves(game.moves());
   if(moves.length===0){if(game.in_checkmate()) return isMax?-99999:99999;return 0;}
   if(isMax){
@@ -1303,38 +1266,33 @@ function minimax(depth,alpha,beta,isMax){
 function cpuMove(){
   if(game.game_over()) return;
   var moves=game.moves({verbose:true});if(!moves.length) return;
-  searchDeadline=Date.now()+2000;
+  searchNodes=0;
   var chosen;
   if(difficulty===0){
-    // Beginner: 2-ply minimax with noise — plays real chess but makes occasional mistakes
+    // Beginner: 1-ply eval with noise — picks from top 3
     var scored=moves.map(function(m){
       game.move(m.san);
-      var s;
-      if(game.in_checkmate()) s=99999;
-      else s=minimax(1,-Infinity,Infinity,false)+Math.random()*120-60;
+      var s=game.in_checkmate()?99999:evalBoard()+Math.random()*120-60;
       game.undo();
       return{move:m,score:s};
     });
     scored.sort(function(a,b){return b.score-a.score;});
-    // Pick from top 2 to add slight unpredictability
-    chosen=scored[Math.floor(Math.random()*Math.min(2,scored.length))].move;
+    chosen=scored[Math.floor(Math.random()*Math.min(3,scored.length))].move;
   }else if(difficulty===1){
-    // Intermediate: 3-ply minimax with minor noise — strong tactical play
+    // Intermediate: 2-ply minimax with minor noise
     var scored=moves.map(function(m){
       game.move(m.san);
-      var s;
-      if(game.in_checkmate()) s=99999;
-      else s=minimax(2,-Infinity,Infinity,false)+Math.random()*40-20;
+      var s=game.in_checkmate()?99999:minimax(1,-Infinity,Infinity,false)+Math.random()*40-20;
       game.undo();
       return{move:m,score:s};
     });
     scored.sort(function(a,b){return b.score-a.score;});
     chosen=scored[0].move;
   }else{
-    // Advanced: 4-ply minimax with quiescence, move ordering, zero noise — maximum strength
+    // Advanced: 3-ply minimax with move ordering, zero noise
     var best=-Infinity,bestMoves=[];
     for(var i=0;i<moves.length;i++){
-      game.move(moves[i].san);var s=minimax(3,-Infinity,Infinity,false);game.undo();
+      game.move(moves[i].san);var s=minimax(2,-Infinity,Infinity,false);game.undo();
       if(s>best){best=s;bestMoves=[moves[i]];}else if(s===best) bestMoves.push(moves[i]);
     }
     chosen=bestMoves[Math.floor(Math.random()*bestMoves.length)];
