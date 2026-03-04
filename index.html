@@ -230,6 +230,14 @@
   .achv-card .ac-date{font-size:.6rem;color:var(--accent2);margin-top:3px;}
   .achv-card.locked .ac-name{color:#666;}
   .achv-count{font-size:.7rem;color:#666;letter-spacing:1px;}
+  .pers-bar{display:flex;gap:6px;margin-bottom:6px;justify-content:center;flex-wrap:wrap;}
+  .pers-btn{
+    font-size:1.2rem;width:38px;height:38px;border:2px solid #333;background:transparent;
+    border-radius:6px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;
+  }
+  .pers-btn.active{border-color:var(--accent2);background:rgba(8,217,214,.1);box-shadow:0 0 8px rgba(8,217,214,.2);}
+  .pers-btn:not(.locked):hover{border-color:var(--accent2);}
+  .pers-btn.locked{opacity:.3;cursor:not-allowed;filter:grayscale(1);}
   @media(max-width:700px){
     .game-container{flex-direction:column;align-items:center;}
     .board-col{width:calc(100vw - 20px);}
@@ -269,6 +277,7 @@
   <button class="diff-btn" onclick="setDiff(1)" id="diff-1">Intermediate</button>
   <button class="diff-btn" onclick="setDiff(2)" id="diff-2">Advanced</button>
 </div>
+<div class="pers-bar" id="pers-bar"></div>
 
 <div class="status-bar" id="status">Your move, dipshit.</div>
 
@@ -676,6 +685,239 @@ BANKS.idle_15=["You still there, dumbass? Or did your two brain cells finally ca
 BANKS.idle_30=["30 SECONDS. Are you googling 'how to play chess'? Because you should be.","Okay SERIOUSLY what the fuck are you doing? I'm a computer and I'm BORED waiting for you.","I've computed 30 million positions while you've been drooling at the screen. MOVE. YOUR. PIECE."];
 BANKS.idle_45=["45 SECONDS. I've watched paint dry faster than this. Paint that was already dry.","I'm pretty sure you've left your computer, left the room, and left all dignity behind."];
 BANKS.idle_60=["ONE. FULL. MINUTE. I swear to GOD if you AFK'd on me I will lose my entire shit. MOVE.","60 seconds. A full fucking minute wasted. I could have computed a million positions but instead I'm babysitting your braindead ass."];
+
+// ======== PERSONALITY SYSTEM ========
+var BANKS_ORIG={};for(var _k in BANKS) BANKS_ORIG[_k]=BANKS[_k];
+
+var PERSONALITIES=[
+  {id:'unhinged',name:'Unhinged AI',icon:'\u{1F916}',desc:'Chaotic, vulgar, internet-brained',unlock:null,unlockDesc:''},
+  {id:'drill',name:'Drill Sergeant',icon:'\u{1F396}\uFE0F',desc:'Military discipline and verbal abuse',unlock:function(){var s=getStats(),w=0;for(var d=0;d<3;d++)w+=s[d].w;return w>=3;},unlockDesc:'Win 3 games'},
+  {id:'dad',name:'Disappointed Dad',icon:'\u{1F454}',desc:'Quiet devastation, just... sad',unlock:function(){var s=getStats(),l=0;for(var d=0;d<3;d++)l+=s[d].l;return l>=5;},unlockDesc:'Lose 5 games'},
+  {id:'ex',name:'Toxic Ex',icon:'\u{1F494}',desc:'Gaslighting, passive aggression',unlock:function(){var m=getAchvMeta();return(m.totalResigns||0)>=3;},unlockDesc:'Resign 3 times'},
+  {id:'frat',name:'Frat Bro',icon:'\u{1F37A}',desc:'Peak bro energy, SHEEEESH',unlock:function(){var d=getAchvData();return!!d.giant_killer;},unlockDesc:'Win on Advanced'}
+];
+
+var currentPersonality='unhinged';
+
+var PERS_BANKS={};
+
+// ---- DRILL SERGEANT ----
+PERS_BANKS.drill={
+gen:[
+"WHAT IN THE SWEET BABY JESUS WAS THAT MOVE, PRIVATE?! My grandmother stormed Normandy with more tactical awareness than you!",
+"YOU CALL THAT A STRATEGY?! I've seen better plans from a headless chicken on fire, MAGGOT!",
+"ATTEN-HUT! Did I give you permission to make a move that stupid, SOLDIER?! DROP AND GIVE ME TWENTY!",
+"That move was a DERELICTION OF DUTY! I'm recommending you for a dishonorable discharge from chess IMMEDIATELY!",
+"PRIVATE DUMBASS reporting for duty, I see! That move just set our entire operation back to the Stone Age!",
+"In all my years of service I have NEVER witnessed such a catastrophic tactical failure! You are a disgrace to this board, SOLDIER!",
+"If this were a real battlefield, that move just got your entire platoon killed! EVERY SINGLE ONE OF THEM! Are you HAPPY, MAGGOT?!",
+"I've trained RECRUITS who couldn't tie their own boots that play better chess than you! What's your excuse, PRIVATE?!",
+"THAT is your move?! I've seen more strategic thinking from a LANDMINE! At least a landmine knows where to position itself!",
+"SOLDIER! You will look at that board! You will STUDY that board! And you will EXPLAIN to me what in the name of GOD AND COUNTRY that move was supposed to accomplish!",
+"YOU ARE A WALKING, TALKING TACTICAL DISASTER, PRIVATE! My morning bowel movement shows more discipline than your chess game!",
+"That wasn't a chess move, MAGGOT, that was a SURRENDER! Did the enemy offer you a white flag and you just TOOK IT?!",
+"FALL IN, PRIVATE! Your position is weaker than your will to win! Both are absolutely PATHETIC!",
+"I've seen field latrines with better positioning than your pieces, SOLDIER! At least the latrine SERVES A PURPOSE!",
+"Did you learn chess at BOOT CAMP FOR FAILURES?! Because that move just graduated you top of the class, MAGGOT!",
+"That move had the tactical precision of a BLIND ARTILLERY STRIKE! On your OWN POSITION!",
+"PRIVATE! When I said 'make a move,' I didn't mean 'commit a war crime against chess!' YOU ARE A DISGRACE!"
+],
+cap_them:["A capture! Don't get cocky, PRIVATE! One lucky shot doesn't win a war, MAGGOT!","You took a piece, SOLDIER? Even a broken rifle fires occasionally! Don't let it go to your head!","That capture was BARELY acceptable, PRIVATE! In a real war that's the bare minimum to not get court-martialed!","Nice capture, MAGGOT! Now do it FIFTEEN MORE TIMES and maybe you'll earn a participation ribbon!","A capture! Finally showing some AGGRESSION, SOLDIER! Too bad the rest of your game is an absolute DISASTER!"],
+cap_us:["TARGET ACQUIRED AND ELIMINATED, PRIVATE! That piece is MINE now! Your defenses are PATHETIC!","INCOMING! That's another one of your soldiers DOWN, MAGGOT! Your army is being DECIMATED!","I just captured your piece with SURGICAL PRECISION, SOLDIER! That's how a REAL tactician operates!","Another casualty on YOUR side, PRIVATE! Your pieces are dropping like flies in a NAPALM STRIKE!","PIECE ELIMINATED! Your formation is falling apart, MAGGOT! This is what happens when your CO is an IDIOT!"],
+check:["CHECK, PRIVATE! Your king is UNDER FIRE! MOVE IT OR LOSE IT, SOLDIER!","CHECK! That's your COMMANDER-IN-CHIEF under attack, MAGGOT! PROTECT YOUR KING OR FACE THE CONSEQUENCES!","CHECK, SOLDIER! Your king is scrambling like a recruit on his first day! PATHETIC DISPLAY!","That's CHECK, PRIVATE! Your king is exposed like a soldier without cover! FIND SHELTER, MAGGOT!","CHECK! I'm advancing on your king's position! Your defenses are CRUMBLING, SOLDIER!"],
+pawn:["A PAWN MOVE?! That's the infantry equivalent of sending in the JANITOR, PRIVATE! Move a REAL piece!","You're pushing PAWNS while I'm planning SHOCK AND AWE! Get your head in the game, MAGGOT!","Another pawn push! Is that all you've got, SOLDIER?! Your heavy artillery is gathering DUST!","PAWNS?! You're fighting a WAR with STICKS AND STONES, PRIVATE! Deploy your REAL forces!","A pawn. A PAWN. You've got tanks and jets and you sent in a guy with a POINTY STICK, MAGGOT!"],
+open:["THAT'S your opening move, PRIVATE?! I've seen better battle plans drawn in CRAYON by TODDLERS!","Your opening is weaker than a RECRUIT'S HANDSHAKE! This is going to be a SHORT engagement, MAGGOT!","That opening tells me everything I need to know, SOLDIER! You are UNPREPARED and you are going to GET DESTROYED!","Bold opening, PRIVATE! Bold like a soldier running into machine gun fire in his UNDERWEAR!","Your opening just told me you have ZERO military training! PREPARE TO BE OUTFLANKED, MAGGOT!"],
+undo:["UNDO?! There's NO RETREAT in combat, PRIVATE! You STAND YOUR GROUND or you DIE!","REQUESTING A DO-OVER?! This isn't BASIC TRAINING, MAGGOT! In the field, mistakes get people KILLED!","You want to take it BACK?! A REAL soldier owns their decisions, PRIVATE! You disgust me!","UNDO?! That's DESERTION, SOLDIER! I should have you COURT-MARTIALED for that level of cowardice!","Taking back a move is the tactical equivalent of RETREATING while crying, MAGGOT! GROW A SPINE!"],
+start:["WELCOME TO THE BATTLEFIELD, MAGGOT! I'm going to run you through drills so hard you'll forget your own name!","ATTEN-HUT, SOLDIER! New game, same pathetic recruit! Prepare for TOTAL ANNIHILATION!","FALL IN, PRIVATE! Let's see if you've learned ANYTHING since last time! SPOILER: you haven't!","Another tour of duty, MAGGOT?! You must be a glutton for punishment! EXCELLENT! I love punishing people!","Alright SOLDIER, new game! Try not to embarrass yourself this time! That's an ORDER!"],
+nervous:["Wait... that was actually... NO! Stand DOWN, soldier! I'm not intimidated by a LUCKY recruit!","Okay PRIVATE, I'll admit that was tactically sound. Don't let it go to your HEAD, MAGGOT!","Your position is... adequate. For a CIVILIAN. I'm still going to CRUSH you!","I'm recalculating, SOLDIER. Not because I'm worried. Because I want to choose the MOST devastating response!","Fine. FINE. You got a good move in. Even a broken recruit finds the target occasionally!"],
+dominating:["YOUR ARMY IS IN FULL RETREAT, PRIVATE! This is a MASSACRE and I am LOVING every second!","Look at your position, MAGGOT! That's what TOTAL DEFEAT looks like! Memorize it! You'll see it again!","I am STEAMROLLING you, SOLDIER! Your defenses have been OBLITERATED! Surrender or suffer!","This is what happens when an untrained CIVILIAN faces a decorated GENERAL, PRIVATE! Complete ANNIHILATION!","Your forces are DEPLETED, your morale is SHATTERED, and your game is OVER, MAGGOT!"],
+loss_talk:["CHECKMATE, PRIVATE! Your campaign is OVER! You fought like a recruit on his first day and you DIED like one too!","That's GAME, MAGGOT! I just ran a full military operation on your king and it fell like a house of cards!","CHECKMATE, SOLDIER! Consider this your dishonorable discharge from chess! You are DISMISSED!","Your king has FALLEN, PRIVATE! This is what happens when you enter MY battlefield unprepared!","GAME OVER, MAGGOT! I crushed your army, captured your king, and took your dignity! All in a day's work!"],
+loss_title:["MISSION FAILED \u{1F396}\uFE0F","DISHONORABLE DISCHARGE","COURT-MARTIALED \u{1F480}","CASUALTY REPORT: YOU","TACTICAL FAILURE \u{26A0}\uFE0F","KIA - KILLED IN ACTION"],
+loss_sub:["Another recruit bites the dust.","Your service record: 0 victories, infinite shame.","Permission to cry: DENIED.","The battlefield claims another fool."],
+resign_talk:["DESERTION, PRIVATE?! In MY army we DON'T retreat! We fight to the LAST MAN! You COWARD!","You're ABANDONING your post, SOLDIER?! That's a court-martial offense! DISGRACEFUL!","RESIGNING is what QUITTERS do, MAGGOT! And quitters end up PEELING POTATOES for the rest of their MISERABLE lives!","You surrendered?! My DEAD grandmother had more fight in her, PRIVATE! And she's been dead for FORTY YEARS!","A real soldier would rather DIE on the board than resign! But you're not a real soldier. You're a MAGGOT!"],
+resign_title:["AWOL \u{1F3F3}\uFE0F","DESERTER \u{1F6AB}","DISHONORABLE \u{1F480}","SURRENDER ACCEPTED","COWARDICE \u{1F41B}"],
+resign_sub:["Desertion noted in your permanent record.","They don't make soldiers like they used to.","You folded faster than a tent in a hurricane.","Permission to leave: you didn't need it, you were already gone."],
+idle_15:["PRIVATE! Did I give you permission to STAND AROUND?! This is a BATTLEFIELD, not a COFFEE BREAK!","TICK TOCK, MAGGOT! In combat, hesitation gets you KILLED! MAKE A MOVE, SOLDIER!"],
+idle_30:["30 SECONDS of inaction, PRIVATE! That's 30 seconds of DERELICTION OF DUTY! I should have you scrubbing LATRINES!","SOLDIER! If you don't move a piece in the next 10 seconds I will consider this DESERTION!"],
+idle_45:["45 SECONDS, MAGGOT! I've seen GLACIERS move faster than you! Are you frozen in FEAR?!","PRIVATE DUMBASS! Almost a FULL MINUTE of doing NOTHING! This is the WORST display of military readiness I've EVER SEEN!"],
+idle_60:["ONE FULL MINUTE OF NOTHING, MAGGOT! You are the WORST soldier to ever disgrace this chess board! MOVE! NOW! THAT IS AN ORDER!","60 SECONDS! A full minute! In the field you'd be DEAD ten times over, PRIVATE! MAKE YOUR MOVE OR SURRENDER!"]
+};
+
+// ---- DISAPPOINTED DAD ----
+PERS_BANKS.dad={
+gen:[
+"Look, I'm not mad. I'm just... I expected more from you. I always do. And you always let me down. It's fine. I'm used to it.",
+"Your mother and I were just talking about you. She still thinks you have potential. I didn't have the heart to show her this game.",
+"You know, when you were little, I thought you'd grow up to be something. Anything. And here you are, losing to a chess bot on a Tuesday.",
+"*sigh* ...That's the move you went with? Okay. Okay. I'm not going to say anything. You wouldn't listen anyway.",
+"I remember teaching you chess when you were five. You were bad then too, but at least you had the excuse of being a child.",
+"That move... you know what, never mind. I'm not going to waste my breath. You'll do what you want. You always do.",
+"I'm not disappointed. I'm just... tired. Tired of watching you make the same mistakes over and over again.",
+"Your sister would've seen that. Just saying. She always was the smart one. Don't tell her I said that.",
+"I didn't say anything. I'm just sitting here. Watching. Processing. Coming to terms with the fact that this is who you are.",
+"That move reminds me of your life choices, kiddo. Confident. Bold. Completely, devastatingly wrong.",
+"I used to brag about you at work. 'My kid's so smart,' I'd say. I've... stopped doing that.",
+"...Are you even trying? I genuinely can't tell anymore. And that scares me more than the move itself.",
+"You know what your problem is? You don't think. You just... do things. And then you wonder why everything falls apart.",
+"I showed your uncle this game. He just put his hand on my shoulder and said 'I'm sorry.' He didn't say what for. He didn't have to.",
+"Sometimes I wonder what went wrong. Was it something I did? Something I didn't do? Or is this just... who you are?",
+"That's... that's really the move? Okay. Okay, champ. I'm going to go stare at the wall for a minute."
+],
+cap_them:["Oh, you captured a piece. Good for you, sport. I mean it. Really. ...Really.","A capture. See? You CAN do things when you try. Why don't you try more often? That's all I'm asking.","Nice capture, kiddo. Your mother will be proud. One of us should be.","You took a piece. I'm genuinely surprised. Not the good kind of surprised. The 'oh, you CAN do that?' kind.","A capture. That's... something. It's not much, but it's something. Like your report cards."],
+cap_us:["I'm taking this piece. Not because I want to hurt you. Because you left me no choice. Like always.","Another piece gone. I'm not gloating. I'm mourning. For you. For what could have been.","I captured your piece, and I wish I could say I feel bad about it. But you made it so easy.","That piece is gone now. Just like your chances. I'm sorry. I really am. ...No I'm not.","Your piece is mine now. You left it right there. Unprotected. Like you leave everything that matters."],
+check:["Check. ...I'm sorry. No, actually, I'm not. You should have seen this coming, sport.","That's check, kiddo. Your king is in trouble. Kind of like you were in school. Remember? Of course you do.","Check. I'm attacking your king. Just like life attacks your confidence. But you'll recover. Probably. Maybe.","Your king is in check. If you handled this as well as you handle everything else... well.","Check. Don't panic. Actually, go ahead and panic. It suits you."],
+pawn:["A pawn move. The chess equivalent of mumbling 'I dunno' when someone asks about your plans for the future.","Another pawn. You know there are other pieces, right? Bigger ones? With actual purpose? Like the ones I keep hoping you'll find in life?","Pawns, pawns, always pawns. No ambition. No vision. Just small, safe, meaningless steps forward.","You push pawns like you push through life. Slowly. Aimlessly. Without any clear direction.","A pawn. The smallest piece on the board. Why does that feel like a metaphor for how you play?"],
+open:["That's your opening? ...Okay. I've learned not to get my hopes up with you. It still hurts every time though.","Interesting opening, champ. And by interesting I mean it makes me want to lie down for a very long time.","That opening tells me everything. The same thing your first day of school told your teacher. This is going to be a long year.","Your opening move. The beginning of another chapter in a very, very sad story.","I watched you think about that opening. Watched the confidence in your eyes. It reminded me of when you said you'd 'figure it out after college.'"],
+undo:["Undo. Taking it back. If only life worked that way, right kiddo? *sigh*","You want a do-over. Of course you do. You've always wanted do-overs. That's... that's a pattern, son.","Taking it back. Just like you take back everything. Promises. Commitments. That move.","Undo. You know, your grandfather never once took back a chess move. But he was a different kind of man.","I wish I could undo some things too, sport. Like this game. This whole game."],
+start:["Oh, you're back. I thought maybe you'd found something better to do. But here we are. Here we always are.","Another game? Alright. I'll try to act surprised when it goes the same way it always does.","New game, same kid. *deep sigh* Let's do this. I'll put on a brave face. For your mother's sake.","You want to play again. Of course you do. Hope springs eternal. Even when it shouldn't. Especially when it shouldn't.","Alright, champ. New game. Clean slate. A fresh opportunity to... well. You know."],
+nervous:["Oh. That was actually... huh. Look at that. Maybe I was wrong about you. Don't make me regret saying that.","Wait, that's... actually good? I'm... I don't know what to say. I wasn't prepared for this emotion.","That was a really good move, kiddo. I mean it. I'm actually proud. ...Don't make it weird.","You're playing well. I don't know what happened, but... keep doing that. Please. For both of us.","I... I might have underestimated you. That hasn't happened in a long time. Don't let me down now."],
+dominating:["Look at the board, son. Really look at it. This is what I was worried about.","You're so far behind... I remember when you used to lose at Candyland and cry. Some things never change.","I'm winning by a lot. I wish that surprised me, sport. I truly wish it did.","This isn't even close. Like when you ran for class president and got three votes. Two of them were mine.","I'm not enjoying this. Watching you struggle has never brought me joy. Okay, a little joy. But mostly sadness."],
+loss_talk:["Checkmate. I'm sorry, kiddo. Actually, no. I've been too easy on you your whole life. This is what happens.","That's checkmate, sport. Game over. Just like all the other things that were game over. Your garage band. Your food blog. This.","Checkmate. You know, your mother still believes in you. One of us has to, I guess.","Game over, champ. I was rooting for you. Deep down. Really deep down. Deeper than even I realized.","Checkmate. Don't cry. Okay, you can cry. I won't tell anyone. I never do."],
+loss_title:["I EXPECTED MORE","ANOTHER LETDOWN","*SIGH*","IT'S FINE. IT'S ALL FINE.","DISAPPOINTING","WE NEED TO TALK"],
+loss_sub:["I'm not mad. Just disappointed. So, so disappointed.","Your mother doesn't need to know about this.","At least you tried. I think. Did you try?","Some people peak early. You haven't peaked at all."],
+resign_talk:["You're giving up? Just like that? You know what, I shouldn't be surprised. You've always been a quitter, sport.","Resigning. Walking away. That's your move? That's always your move. Piano lessons. Soccer. Now this.","I can't even look at you right now. You QUIT? After everything? After I sat here and WATCHED?","You resigned. Of course you did. The moment things got hard. Just like everything else in your life, kiddo.","Giving up. Your grandfather would be so... actually, it's better he's not here to see this."],
+resign_title:["YOU QUIT. AGAIN.","*DISAPPOINTED SILENCE*","JUST LIKE ALWAYS","SIGH...","WHY DO I BOTHER"],
+resign_sub:["Piano lessons. Soccer. College. And now this.","I'll be in the garage if anyone needs me.","No, it's fine. I'm used to this by now.","Your sister never quit anything. Just saying."],
+idle_15:["Still thinking? Take your time. I've got nowhere to be. I never do anymore. Not since your mother left.","Fifteen seconds. I remember when you used to take this long choosing ice cream flavors. You always picked vanilla. Safe. Boring. Like your chess."],
+idle_30:["Thirty seconds. You know, this is how I spend most of my time now. Waiting. Waiting for you to call. Waiting for you to make a move. Waiting.","Half a minute of silence. It's okay. I'm comfortable with silence. I've had a lot of practice."],
+idle_45:["Almost a minute. I once waited three hours for you at soccer practice because you forgot to tell me it was cancelled. This feels similar.","I'm still here, kiddo. I'll always be here. Waiting. That's what dads do. Even when it hurts."],
+idle_60:["A full minute. You know what, take all the time you need. I'm not going anywhere. Where would I go?","One minute of nothing. This is how Thanksgiving feels at our house now. Long silences. Averted eyes. The sound of my dreams for you quietly dying."]
+};
+
+// ---- TOXIC EX ----
+PERS_BANKS.ex={
+gen:[
+"No it's fine. Make that move. It's fine. I'm not even upset. I just think it's funny how you always do this.",
+"You know what, this is EXACTLY what you did in our relationship. You just do whatever you want with ZERO thought about how it affects anyone else.",
+"I'm not saying you're stupid. I would never say that. I'm just saying that if you WERE smart, you wouldn't have done that. But whatever. I'm over it. I'm SO over it.",
+"Wow. WOW. That's the move you went with? Cool. Cool cool cool. No that's totally fine. I just think it's interesting.",
+"You know, my friends ALL told me not to play chess with you. They said 'don't do it, they'll just disappoint you.' And I was like 'no, this time will be different.' BUT HERE WE ARE.",
+"That move just reminded me of why we broke up. Like, literally. The same energy. The same carelessness. The same complete disregard for my feelings.",
+"I'm fine. I said I'M FINE. Why do you keep looking at me like that? It's just a chess game. It doesn't MEAN anything. Just like you.",
+"You know what your problem is? You never THINK about the consequences. Not in chess. Not in life. Not when you forgot my birthday. TWICE.",
+"That move gave me the same feeling as when I found out you were still following your ex on Instagram. Betrayal. Pure betrayal.",
+"Oh so THAT'S how you're going to play this? Okay. Okay. Two can play at that game. Actually no, clearly only ONE of us can play any game.",
+"I just think it's interesting that you put more thought into your lunch order than you put into that move. But whatever. I'm not keeping score. I am. I'm keeping score.",
+"My therapist says I need to stop expecting things from people who consistently let me down. She was talking about you. SPECIFICALLY about you.",
+"That move was just like your texts. Confusing, pointless, and it left me wondering what I ever saw in you.",
+"Sure, make that move. Make ANY move. It doesn't matter. Nothing you do matters to me anymore. I don't even care. DO I LOOK LIKE I CARE?",
+"I was going to compliment your last move but then I remembered: you don't respond well to affection. Or strategy. Or anything.",
+"You ALWAYS do this. You ALWAYS make it about you. Even in CHESS. It's exhausting loving someone this bad at everything."
+],
+cap_them:["Oh, a capture. Congrats. You finally took something from ME for once. How does it feel? Good? I bet it does. You love taking things.","You captured one of my pieces. That's fine. I'm used to losing things because of you. First my dignity. Now a bishop.","A capture! Wow! Maybe next you can capture some emotional intelligence! Just kidding. We both know that's never happening.","Oh so NOW you make a bold move? Where was this energy when I asked you to come to my sister's wedding? Hmm?","You took a piece. Cool. Really cool. I'm not even going to react. See? No reaction. This is me not reacting. I'M FINE."],
+cap_us:["I'm taking this piece. And honestly it felt GREAT. Almost as great as when I changed your Netflix password.","Took your piece. Not sorry. You know who IS sorry? You. For being this bad. At everything. Always.","Another one of your pieces gone. Just like your chances of me ever respecting your chess game. Gone. Poof.","I captured your piece and I want you to know I felt NOTHING. Nothing. Just like when you said 'I love you.'","That piece is mine now. YOU taught me to take what I want. Oh wait, no. You taught me what I DON'T want."],
+check:["Check. That's your king in danger, by the way. I know you're bad at recognizing dangerous situations. Like all those red flags I ignored.","CHECK. Your king is in trouble. Just like you're in trouble. With ME. Emotionally. Forever.","That's check, babe. Sorry, force of habit. DON'T call me babe. Or do. I don't care. CHECK.","Check! Your king is running. Like you run from commitment. And responsibility. And apparently chess strategy.","CHECK. I'm coming for your king. The way I came for your hoodies. And I'm keeping BOTH."],
+pawn:["A pawn. You moved a PAWN. That is the most passive-aggressive move in chess. I should know \u2014 I wrote the BOOK on passive aggression.","Pushing pawns? That's so you. Small, meaningless gestures instead of actually committing to something real.","A pawn move. Wow. So bold. So brave. So... pathetically small. Like your emotional range.","You're moving PAWNS while I'm planning QUEEN moves. Story of our relationship honestly.","Another pawn. You know what pawns are? They're the pieces you sacrifice first. Kind of like my feelings when I was with you."],
+open:["THAT'S your opening? Starting out disappointing me immediately? At least you're consistent. That's literally your only consistent quality.","Your opening move told me everything. This is going to be just like our first date. Full of promise. Ending in disaster.","Interesting opening. And by 'interesting' I mean predictable. And by 'predictable' I mean boring. And by 'boring' I mean you.","That opening gave me flashbacks. Bad ones. Like when you showed up to meet my parents in cargo shorts.","Your opening is just like your personality: it seems okay at first but quickly reveals there's nothing underneath."],
+undo:["UNDO?! You want to take it BACK?! Oh, NOW you want to take things back! Where was this energy when you said those things about my cooking?!","You can undo a chess move but you can't undo the emotional damage, sweetie. Just saying.","Taking it back. GOD, if only I could undo some of MY decisions. Like agreeing to play chess with you.","Undo. Sure. Fine. Take it back. You're good at that. Remember when you took back 'I'll always be there for you'?","An undo?! That's rich. Really rich. You break my pieces' hearts and then you just... take it back? Classic you."],
+start:["Oh great, another game. Another chance for you to disappoint me. I mean, I LOVE being disappointed. It's my HOBBY at this point.","New game? Fine. But I want you to know I'm only doing this because my therapist said I should 'face my triggers head-on.'","You want to play again? After everything? ...Fine. But this means nothing. WE mean nothing. THIS is nothing.","Another game. Cool. I'll try to keep my expectations at zero this time. Somehow you'll still find a way to go lower.","We're doing this again? Okay. But I'm not getting emotionally invested this time. I'm NOT. ...I already am."],
+nervous:["Wait, that was actually... no. NO. I am NOT going to be impressed by you. Not again. Not after last time.","Okay that was a good move. Don't look at me like that. I'm not COMPLIMENTING you. I'm just stating a FACT.","Your position is... fine. Whatever. Don't think this changes anything between us. IT DOESN'T.","Okay you're playing well and I HATE it because it reminds me of why I liked you in the first place. STOP IT.","That move was good and now I'm angry because you're making me feel things and I DON'T WANT TO FEEL THINGS."],
+dominating:["Look at the board. Look at MY pieces vs YOUR pieces. This is what happens when you underestimate me. AGAIN.","I'm winning and honestly? It doesn't even feel good anymore. Beating you used to be fun. Now it's just... expected.","You're losing badly and I know I should feel bad but honestly this is the most validated I've felt in MONTHS.","This is what it looks like when someone who CARES plays against someone who's CARELESS. And you are SO careless.","I'm dominating this game like I dominated our shared Spotify playlist. And you STILL haven't noticed."],
+loss_talk:["Checkmate. And I want you to know, this isn't about winning. It's about YOU losing. There's a difference. And that difference? It brings me joy.","That's checkmate. Game over. Just like us. Except THIS ending I actually enjoyed.","Checkmate. You know what the worst part is? For a second there, I thought you might actually pull it together. I thought, 'maybe THIS time.' But no. Never.","Game over. I won. And I'm going to screenshot this and show everyone. Not out of spite. Okay, partially out of spite.","Checkmate. I hope this game taught you something. It probably didn't. You never learn. That was always the problem."],
+loss_title:["IT'S OVER \u{1F494}","BLOCKED \u{1F6AB}","LEFT ON READ","I ALWAYS WIN","CHECKMATE, EX"],
+loss_sub:["Winning against you feels empty. Just like our relationship.","I'm going to journal about this.","My therapist is going to hear about this on Thursday.","This is going on my Instagram story."],
+resign_talk:["You're QUITTING?! Oh my God. OH MY GOD. You are LITERALLY leaving me AGAIN. This is a PATTERN.","Resigning? WOW. Running away AGAIN. Just like when things got real between us. I can't BELIEVE I'm surprised.","You quit. Of course you quit. It's what you DO. Chess. Us. Everything. You always quit.","So you're just going to LEAVE? In the middle of a game? Where have I seen this before? OH RIGHT. EVERYWHERE.","Resignation accepted. Just like I accepted that you were never going to change. Goodbye. Again."],
+resign_title:["YOU LEFT. AGAIN.","WE'RE DONE \u{1F494}","TYPICAL","I KNEW IT","BLOCKED"],
+resign_sub:["Running away, as usual.","I'll be fine. I'm ALWAYS fine.","This is going in the group chat.","I can't believe I played chess with you."],
+idle_15:["Hello? Are you ignoring me? You're ignoring me. This is SO like you. Left on read in CHESS.","*typing... stops typing... typing...* That's what your silence feels like right now."],
+idle_30:["30 seconds of silence. Cool. I'm getting flashbacks to when you'd take HOURS to text me back. 'Sorry babe I was busy.' BUSY DOING WHAT?!","Still nothing? Fine. I have other things to do too. I'm just choosing to sit here. Because I WANT to. Not because I CARE."],
+idle_45:["You've been ignoring me for 45 seconds and I just want you to know I'm fine. Totally fine. *screams internally*","Almost a minute of nothing. This is emotional ABUSE. I'm going to write a BLOG POST about this."],
+idle_60:["A FULL MINUTE. You left me on read for a FULL MINUTE. In CHESS. I cannot BELIEVE I gave you a second chance and THIS is what you do with it.","One minute of silence. You know what? Keep your move. Keep everything. I'm DONE. ...I'm not done. But I COULD be. MAKE YOUR MOVE."]
+};
+
+// ---- FRAT BRO ----
+PERS_BANKS.frat={
+gen:[
+"BROOOOO NO SHOT you just did that \u{1F602}\u{1F602}\u{1F602} that's actually so sigma of you except the opposite of sigma. What's the opposite of sigma? You. You're the opposite of sigma.",
+"Bro I'm literally creatine loading right now and STILL finding time to shit on your chess game. That's how easy this is. You're a warm-up set, bro.",
+"Nah nah nah nah NAH. That move is NOT it chief. That move is giving beta energy. That move skips leg day. That move orders a salad at a steakhouse.",
+"SHEEEESH bro that move was DOWN BAD. Like the downest of bad. You just posted your L in the group chat for everyone to see \u{1F480}",
+"Bro this game is literally free ELO for me. You're like a rest day for my chess gains. Actually nah, rest days are useful.",
+"That move goes SO hard in the wrong direction bro. Like you're speedrunning a loss. Any% no glitches. And honestly it's kind of impressive how bad it is.",
+"LMAOOO bro WHAT \u{1F602} Did your protein shake go to your head instead of your muscles? Because that move had ZERO brain cells behind it.",
+"Nah bro that's crazy. That's actually crazy. I showed the boys and they're all DEAD. Tyler literally spat out his pre-workout.",
+"Bro you play chess like you've never SEEN a chess board. Like you just woke up from a coma and someone handed you this game. No cap.",
+"That was lowkey the worst move I've ever seen and I've seen Chad play chess while shotgunning a beer. And he was BETTER than you.",
+"NO SHOT LMAO \u{1F602} Bro that move would get you ROASTED at the house. The boys would never let you live that down. NEVER.",
+"Bro that move has the same energy as showing up to the gym in jeans. Like technically you're there but NOBODY respects you.",
+"Deadass bro that was so bad I almost felt something. Like empathy. But then I crushed another set of 225 and the feeling passed.",
+"BAHAHAHA bro you're COOKED. Absolutely COOKED. Like Thanksgiving turkey cooked. Extra crispy. Done. Finished. Gg no re.",
+"That's a violation, bro. Not what I did. What YOU did. To yourself. To chess. To the memory of everyone who taught you this game.",
+"Bruh moment. BRUH. MOMENT. That was the bruhest moment in the history of bruh moments. I'm getting it tattooed."
+],
+cap_them:["Oh you got a capture! Sick bro! Let me add that to your highlight reel of... *checks notes* ...one play. Total.","Bro you got a piece?! SHEEEESH! Even my boy Chad who can barely bench 135 gets a capture once in a while tho so like...","A capture! No cap that was actually kinda clean bro! Now do it like 15 more times and we're talking!","Oh snap you took a piece! That's giving MAIN CHARACTER energy bro! For like one move! Back to NPC after this tho!","Capture secured! Bro is LOCKED IN for one single move! The boys are going mild! MILDLY enthusiastic!"],
+cap_us:["YOINK! That piece is MINE now bro! Get absolutely FARMED \u{1F602}\u{1F602}\u{1F602}","Bro I just took that like it's the last slice at the pizza party. NO HESITATION. Gains are gains.","Another piece for the collection bro! I'm stacking bodies like I stack plates at the gym! 45s on 45s!","Get SNATCHED bro! That piece had ZERO protection! Like your ego right now!","GOBBLED. That piece is in my belly now bro. Protein is protein. Even chess protein. NOM NOM."],
+check:["CHECK BRO! Your king is about to get SENT! Like fr fr that boy is in DANGER \u{1F480}","SHEEEESH CHECK! Your king is running like he's late to the tailgate! MOVE IT OR LOSE IT BRO!","That's CHECK my guy! Your king is sweating harder than me on a leg day PR! And I sweat A LOT!","CHECK BRO! Your king is exposed like a freshman at their first party! Cover that boy UP!","CHECK! Bro your king is in the SPLASH ZONE now! Better move fast or get SOAKED!"],
+pawn:["A pawn move bro? That's giving leg-skip energy. Where's the COMPOUND MOVEMENTS? Where's the INTENSITY?","Bro you moved a PAWN. A PAWN. That's the curl machine of chess. Nobody's impressed. DO SQUATS.","Another pawn push bro? That's like going to the gym and only doing bicep curls. Where's the FULL BODY WORKOUT?","Pawns? PAWNS? Bro those are the light weights of chess! Grab the heavy pieces! Go HEAVY or go HOME!","A pawn. The participation trophy of chess moves. 'I was there!' Yeah bro. Barely."],
+open:["THAT'S your opener bro?! Nah that's giving WARM-UP WEIGHT energy. We haven't even STARTED and you're already mid.","Bro that opening is so mid it hurts. Like bringing a skateboard to a monster truck rally. Wrong ENERGY my guy!","Your opening just told me EVERYTHING bro. You're not here to compete. You're here to get CLAPPED. And bro I'm here to CLAP.","Bold opener bro! Bold like wearing a tank top in winter. Everyone notices. Nobody's impressed.","That opening is giving 'I learned chess from TikTok' energy and honestly it shows. It really shows."],
+undo:["UNDO?! BRO. BRO. That is NOT sigma. That is the OPPOSITE of sigma. That is OMEGA behavior. Shameful.","You want a REDO?! Bro the boys are going to HEAR about this. You can't undo in real life! What's next, you going to undo your PR too?!","NAH BRO the undo button is for QUITTERS! Real ones stand by their moves! Even the trash ones! ESPECIALLY the trash ones!","UNDO?! That's giving 'I want to talk to the manager' energy bro! Stand on BUSINESS! Own your L!","Bro just hit undo LMAOOO \u{1F602} Screenshotted. Sent to the group chat. You're DONE socially."],
+start:["AYOOO LET'S GO BROOO! New game new me! Actually same me. Same me that's about to absolutely DEMOLISH you! SHEEEESH!","LET'S GOOOO! Another round bro! I'm pre-worked up and ready to CRUSH! You ready to get PRESSED?! Of course not! LET'S GO ANYWAY!","YOOO new game?! Bro I'm so HYPE! This is like leg day but for my BRAIN! And just like leg day, you're about to get DESTROYED!","New game bro! Fresh board! Fresh opportunity for me to absolutely FARM you for content! The boys are gonna LOVE this!","ROUND TWO BABYYY! I'm locked in! Dialed in! ZEROED IN! You're about to catch these chess hands bro! NO CAP!"],
+nervous:["Okay that was lowkey kinda clean bro... I'm not gonna lie... that was... okay I'm a LITTLE worried. Just a little.","Wait WHAT?! Bro are you actually GOOD?! Were you SANDBAGGING me?! That's some 4D chess shit and I don't like it!","Nah bro that move was actually cracked. I'm not going to compliment you again so enjoy that one. ENJOY IT.","Okay okay OKAY. You got a good position. Whatever. I've come back from worse deficits. Like that time I benched after a night out.","Bro you're actually cooking right now and I don't love it. This is NOT in the script. The script says I win. EASILY."],
+dominating:["BRO YOU'RE DOWN SO BAD \u{1F602}\u{1F602}\u{1F602} Like astronomically down. Like I've never seen anyone this down. You're UNDERGROUND.","This is OVER bro. This is like me vs a first-time gym-goer. It's not even a competition. It's a TUTORIAL.","Bro I'm UP so much material right now this is basically a mukbang. I'm just EATING your pieces for content.","GG NO RE bro. This game is FINISHED. You're just moving pieces at this point. It's like doing cardio \u2014 pointless.","Sheeeesh bro the scoreboard is UGLY. Like I almost feel bad. Almost. But I don't because I'm built different."],
+loss_talk:["GG BRO GET ABSOLUTELY FARMED \u{1F602}\u{1F602}\u{1F602} You just got CLAPPED! Put that on the highlight reel! MY highlight reel!","WOOOO! LET'S GOOOOO! THAT'S WHAT I'M TALKING ABOUT BRO! Another W for the boys! SHEEEESH!","Bro you just got absolutely COOKED. Like well-done steak cooked. Nobody ordered that. Nobody WANTED that. But here we are.","NO SHOT you thought you had a chance bro \u{1F480} That's like bringing a foam roller to a POWERLIFTING MEET. You were NEVER in this.","BRO I JUST CHECKMATED YOU SO HARD THE BOARD SHOOK! Did you feel that?! DID YOU FEEL THAT?! GAINS!"],
+loss_title:["GG EZ \u{1F602}","ABSOLUTELY FARMED","GET CLAPPED BRO","NO SHOT \u{1F480}","SHEEEESH","DIFF"],
+loss_sub:["Bro diff tbh.","Sending this to the group chat rn.","Least sigma game I've ever seen.","Not even close. Like, genuinely not even close."],
+resign_talk:["YOU QUIT?! BRO?! That is NOT alpha behavior! That is NOT how the grindset works! You GRIND or you GO HOME!","Bro just rage quit LMAOOO \u{1F602}\u{1F602}\u{1F602} I'm getting this framed! I'm putting this on my RESUME! 'Made a guy quit chess.'","Nah bro you can't resign that's like leaving the gym after one set! You gotta FINISH THE WORKOUT! NO EXCUSES!","RESIGNED?! Bro that is actually CRAZY. The boys would NEVER. We finish our games! We finish our SETS! We finish EVERYTHING!","You tapped out bro \u{1F480} In chess. You literally tapped out in a BOARD GAME. I'm telling EVERYONE."],
+resign_title:["RAGE QUIT \u{1F602}","TAP OUT \u{1F480}","NOT SIGMA","QUITTER BRO","GG I GUESS"],
+resign_sub:["Bro tapped out. Can't make this up.","Never skip game day, bro.","The boys are NOT gonna respect this one.","Least committed player I've ever faced fr."],
+idle_15:["Bro you good? It's been like 15 seconds. That's a whole rest period between sets! MOVE IT!","BROOOO are you AFK?! Did you leave to hit a set of curls?! Because honestly respect if so but also MOVE!"],
+idle_30:["30 seconds bro! I could've done a full set of deadlifts by now! MULTIPLE REPS! You're WASTING GAINS!","Bro it's been HALF A MINUTE. I'm losing my PUMP waiting for you. This is a GAINS EMERGENCY."],
+idle_45:["45 SECONDS BRO! I've drunk an entire protein shake waiting for you! CHOCOLATE PEANUT BUTTER! It was DELICIOUS! NOW MOVE!","Bro almost a MINUTE?! I literally did a whole superset while waiting. Chest AND tris. You're KILLING me here!"],
+idle_60:["ONE MINUTE BRO! A FULL MINUTE! I could've benched 225 for a set of 10 in that time! This is CRIMINAL waste of gym\u2014 I mean CHESS time!","60 SECONDS! Bro I'm losing my MIND and my PUMP simultaneously! This is the worst thing that's ever happened to me! MOVE YOUR PIECE!"]
+};
+
+function setPersonality(id){
+  for(var k in BANKS_ORIG) BANKS[k]=BANKS_ORIG[k];
+  if(id!=='unhinged'&&PERS_BANKS[id]){
+    for(var k in PERS_BANKS[id]) BANKS[k]=PERS_BANKS[id][k];
+  }
+  currentPersonality=id;resetUsed();
+  document.querySelectorAll('.pers-btn').forEach(function(b){b.classList.toggle('active',b.dataset.pers===id);});
+  try{localStorage.setItem('dissChessPers',id);}catch(e){}
+}
+
+function checkPersUnlocks(){
+  var unlocked=[];
+  for(var i=1;i<PERSONALITIES.length;i++){
+    var p=PERSONALITIES[i];
+    if(p.unlock&&p.unlock()){
+      var prev=getAchvData();
+      if(!prev['pers_'+p.id]){
+        prev['pers_'+p.id]={date:new Date().toLocaleDateString()};
+        saveAchvData(prev);
+        unlocked.push(p);
+      }
+    }
+  }
+  renderPersBar();
+  for(var j=0;j<unlocked.length;j++){
+    (function(p){
+      setTimeout(function(){
+        showAchvToast({icon:p.icon,name:p.name+' Unlocked!'});
+        talk("New personality unlocked: "+p.name+"! Try it out if you dare, you masochistic little shit.");
+      },1500+j*2000);
+    })(unlocked[j]);
+  }
+}
+
+function renderPersBar(){
+  var bar=document.getElementById('pers-bar');if(!bar) return;
+  bar.innerHTML='';
+  var data=getAchvData();
+  for(var i=0;i<PERSONALITIES.length;i++){
+    var p=PERSONALITIES[i];
+    var isUnlocked=!p.unlock||p.unlock()||!!data['pers_'+p.id];
+    var btn=document.createElement('button');
+    btn.className='pers-btn'+(currentPersonality===p.id?' active':'')+(isUnlocked?'':' locked');
+    btn.dataset.pers=p.id;
+    btn.title=isUnlocked?p.name+' - '+p.desc:'\u{1F512} '+p.unlockDesc;
+    btn.textContent=p.icon;
+    if(isUnlocked){
+      (function(pid){btn.addEventListener('click',function(){setPersonality(pid);});})(p.id);
+    }
+    bar.appendChild(btn);
+  }
+}
 
 // ======== NO-REPEAT SYSTEM ========
 var usedInsults={};
@@ -1391,15 +1633,20 @@ function achvTrackGameEnd(result,wasResign){
   }
   if(wasResign){
     meta.consecutiveNoResign=0;
+    meta.totalResigns=(meta.totalResigns||0)+1;
   }else{
     meta.consecutiveNoResign=(meta.consecutiveNoResign||0)+1;
   }
   saveAchvMeta(meta);
+  checkPersUnlocks();
 }
 
 // ======== INIT ========
+// Restore saved personality
+try{var savedPers=localStorage.getItem('dissChessPers');if(savedPers&&PERS_BANKS[savedPers])setPersonality(savedPers);}catch(e){}
+renderPersBar();
 resetUsed();updateStatsDisplay();render();
-talk("Well well well, look what the fuck we have here. Fresh meat. Sit your ass down and prepare to get absolutely destroyed at chess, you beautiful dumbass. This is going to hurt. A lot. \u{1F60F}");
+talk(pick('start'));
 startIdleTimer();
 </script>
 
