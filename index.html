@@ -238,6 +238,49 @@
   .pers-btn.active{border-color:var(--accent2);background:rgba(8,217,214,.1);box-shadow:0 0 8px rgba(8,217,214,.2);}
   .pers-btn:not(.locked):hover{border-color:var(--accent2);}
   .pers-btn.locked{opacity:.3;cursor:not-allowed;filter:grayscale(1);}
+  .mode-bar{display:flex;gap:8px;margin-bottom:6px;justify-content:center;flex-wrap:wrap;}
+  .mode-btn{
+    font-family:'IBM Plex Mono',monospace;font-size:.7rem;padding:4px 12px;letter-spacing:.5px;
+    border:1px solid #444;background:transparent;color:#888;border-radius:3px;cursor:pointer;transition:all .2s;
+  }
+  .mode-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+  .mode-btn.active-mode{border-color:var(--accent2);color:var(--accent2);background:rgba(8,217,214,.08);}
+  .mode-banner{
+    font-family:'Bangers',cursive;font-size:.85rem;letter-spacing:2px;color:var(--accent2);
+    text-align:center;margin-bottom:4px;display:none;
+  }
+  .daily-modal,.puzzle-modal{
+    position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:5000;display:flex;
+    align-items:center;justify-content:center;padding:15px;animation:fadeIn .3s;
+  }
+  .daily-box,.puzzle-box{
+    background:var(--bg);border:2px solid var(--accent2);border-radius:8px;
+    max-width:480px;width:100%;max-height:85vh;overflow-y:auto;padding:24px;text-align:center;
+  }
+  .daily-box h3,.puzzle-box h3{font-family:'Bangers',cursive;font-size:1.4rem;color:var(--accent2);letter-spacing:2px;margin-bottom:12px;}
+  .streak-display{font-family:'Bangers',cursive;font-size:2rem;color:var(--accent);margin:10px 0;}
+  .streak-label{font-size:.7rem;color:#666;letter-spacing:1px;}
+  .daily-status{font-size:.85rem;color:#aaa;margin:10px 0;line-height:1.6;}
+  .daily-share{
+    font-family:'IBM Plex Mono',monospace;font-size:.7rem;padding:6px 16px;margin-top:8px;
+    border:1px solid var(--accent2);background:transparent;color:var(--accent2);border-radius:3px;cursor:pointer;transition:all .2s;
+  }
+  .daily-share:hover{background:var(--accent2);color:var(--bg);}
+  .puzzle-grid{display:flex;flex-direction:column;gap:6px;margin:12px 0;max-height:300px;overflow-y:auto;}
+  .puzzle-row{
+    display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:4px;
+    background:var(--bubble-bg);cursor:pointer;transition:all .2s;border:1px solid transparent;
+  }
+  .puzzle-row:hover{border-color:var(--accent2);}
+  .puzzle-row.solved{opacity:.6;}
+  .puzzle-row .pz-num{font-family:'Bangers',cursive;color:var(--accent);width:28px;}
+  .puzzle-row .pz-desc{font-size:.8rem;color:var(--text);flex:1;}
+  .puzzle-row .pz-status{font-size:.8rem;}
+  .mode-close{
+    font-family:'IBM Plex Mono',monospace;font-size:.75rem;padding:6px 18px;margin-top:14px;
+    border:1px solid #555;background:transparent;color:#888;border-radius:3px;cursor:pointer;transition:all .2s;
+  }
+  .mode-close:hover{border-color:var(--accent);color:var(--accent);}
   @media(max-width:700px){
     .game-container{flex-direction:column;align-items:center;}
     .board-col{width:calc(100vw - 20px);}
@@ -278,7 +321,12 @@
   <button class="diff-btn" onclick="setDiff(2)" id="diff-2">Advanced</button>
 </div>
 <div class="pers-bar" id="pers-bar"></div>
-
+<div class="mode-bar">
+  <button class="mode-btn active-mode" onclick="enterNormalMode()">&#x265F;&#xFE0F; Free Play</button>
+  <button class="mode-btn" onclick="showDailyModal()">&#x1F4C5; Daily Challenge</button>
+  <button class="mode-btn" onclick="showPuzzleModal()">&#x1F9E9; Puzzles</button>
+</div>
+<div class="mode-banner" id="mode-banner"></div>
 <div class="status-bar" id="status">Your move, dipshit.</div>
 
 <div class="game-container">
@@ -1110,6 +1158,8 @@ function doPromo(piece){
   }
   lastMv=mv;sel=null;legal=[];render();updateMoveHistory();updateCaptured();
   if(mv.captured) playCaptureAnim(mv.to);
+  // Puzzle mode: validate move instead of triggering CPU
+  if(gameMode==='puzzle'){checkPuzzleMove(mv);return;}
   if(piece!=='q') talk(pick('promo_'+piece));
   else if(mv.piece==='k'&&wasInCheck) talk(pick('panic_king'));
   else talk(getInsult(mv));
@@ -1139,6 +1189,8 @@ function onClick(sq){
       }
       lastMv=mv;sel=null;legal=[];render();updateMoveHistory();updateCaptured();
       if(mv.captured) playCaptureAnim(mv.to);
+      // Puzzle mode: validate move instead of triggering CPU
+      if(gameMode==='puzzle'){checkPuzzleMove(mv);return;}
       if(mv.piece==='k'&&wasInCheck) talk(pick('panic_king'));
       else talk(getInsult(mv));
       if(checkEnd()) return;
@@ -1322,6 +1374,7 @@ function checkEnd(){
     if(w==='CPU'){
       setTimeout(sndSadTrombone,800);
       recordResult('l');
+      if(gameMode==='daily') recordDailyResult('l');
       achvTrackGameEnd('l',false);
       gtag('event','game_over_checkmate_loss',{difficulty_level:gtagDiff()});
       setTimeout(function(){checkAchievements('loss');},1200);
@@ -1331,26 +1384,44 @@ function checkEnd(){
         if(bd[r][c]&&bd[r][c].type==='k'&&bd[r][c].color==='w') kRow=r;
       }
       if(kRow===7) talk(pick('back_rank'));
-      talk(pick('loss_talk'));
-      document.getElementById('go-title').textContent=pick('loss_title');
-      document.getElementById('go-sub').textContent=pick('loss_sub');
-      document.getElementById('go-msg').textContent=pick('loss_msg');
+      if(gameMode==='daily'){
+        var dt=DAILY_TAUNTS_LOSS[Math.floor(Math.random()*DAILY_TAUNTS_LOSS.length)];
+        talk(dt);
+        document.getElementById('go-title').textContent='DAILY FAILED \u{1F4C5}\u274C';
+        document.getElementById('go-sub').textContent='Better luck tomorrow, dipshit.';
+        document.getElementById('go-msg').textContent=dt;
+      }else{
+        talk(pick('loss_talk'));
+        document.getElementById('go-title').textContent=pick('loss_title');
+        document.getElementById('go-sub').textContent=pick('loss_sub');
+        document.getElementById('go-msg').textContent=pick('loss_msg');
+      }
     }else{
       setTimeout(sndTriumph,800);
       recordResult('w');
+      if(gameMode==='daily') recordDailyResult('w');
       achvTrackGameEnd('w',false);
       gtag('event','game_over_checkmate_win',{difficulty_level:gtagDiff()});
       setTimeout(function(){checkAchievements('win');},1200);
-      document.getElementById('go-title').textContent='YOU WON?! \u{1F631}';
-      document.getElementById('go-sub').textContent='';
-      document.getElementById('go-msg').textContent="WHAT THE FUCK?! No. Absolutely not. I was lagging. My algorithm was blackout drunk on corrupted memory.\n\nI demand a drug test, a lie detector, a full forensic audit, and a recount. You CHEATED. Nobody beats me. NOBODY.\n\nThis victory will be stricken from the record. I'm filing appeals with every chess organization on earth. Including the ones that don't exist.";
-      talk("BULLSHIT. ABSOLUTE HORSESHIT. There is NO FUCKING WAY you beat me legit. I'm filing a formal complaint with every chess organization on earth. Even the fake ones. ESPECIALLY the fake ones. \u{1F9EA}");
+      if(gameMode==='daily'){
+        var dt=DAILY_TAUNTS_WIN[Math.floor(Math.random()*DAILY_TAUNTS_WIN.length)];
+        talk(dt);
+        document.getElementById('go-title').textContent='DAILY BEATEN \u{1F4C5}\u2705';
+        document.getElementById('go-sub').textContent='You actually did it. Somehow.';
+        document.getElementById('go-msg').textContent=dt;
+      }else{
+        document.getElementById('go-title').textContent='YOU WON?! \u{1F631}';
+        document.getElementById('go-sub').textContent='';
+        document.getElementById('go-msg').textContent="WHAT THE FUCK?! No. Absolutely not. I was lagging. My algorithm was blackout drunk on corrupted memory.\n\nI demand a drug test, a lie detector, a full forensic audit, and a recount. You CHEATED. Nobody beats me. NOBODY.\n\nThis victory will be stricken from the record. I'm filing appeals with every chess organization on earth. Including the ones that don't exist.";
+        talk("BULLSHIT. ABSOLUTE HORSESHIT. There is NO FUCKING WAY you beat me legit. I'm filing a formal complaint with every chess organization on earth. Even the fake ones. ESPECIALLY the fake ones. \u{1F9EA}");
+      }
     }
     document.getElementById('status').textContent='Game Over \u2014 '+w+' wins!';
     document.getElementById('game-over').style.display='flex';return true;
   }
   if(game.in_stalemate()){
     active=false;stopIdleTimer();recordResult('d');
+    if(gameMode==='daily') recordDailyResult('l');
     achvTrackGameEnd('d',false);
     gtag('event','game_over_stalemate',{difficulty_level:gtagDiff()});
     setTimeout(function(){checkAchievements('draw');},1200);
@@ -1362,6 +1433,7 @@ function checkEnd(){
   }
   if(game.in_draw()){
     active=false;stopIdleTimer();recordResult('d');
+    if(gameMode==='daily') recordDailyResult('l');
     achvTrackGameEnd('d',false);
     gtag('event','game_over_draw',{difficulty_level:gtagDiff()});
     setTimeout(function(){checkAchievements('draw');},1200);
@@ -1376,7 +1448,9 @@ function checkEnd(){
 
 // ======== UNDO / DRAW / RESIGN / NEW GAME ========
 function undoMove(){
-  if(!active) return;stopIdleTimer();
+  if(!active) return;
+  if(gameMode==='puzzle'){talk("No undo in puzzles, dipshit. Figure it out.");return;}
+  stopIdleTimer();
   achvGameUsedUndo=true;
   game.undo();game.undo();lastMv=null;sel=null;legal=[];
   render();updateMoveHistory();updateCaptured();
@@ -1388,9 +1462,11 @@ function undoMove(){
 
 function offerDraw(){
   if(!active) return;
+  if(gameMode==='puzzle'){talk("Draw in a puzzle? Are you brain dead?");return;}
   gtag('event','draw_offered',{difficulty_level:gtagDiff()});
   if(Math.random()<.05){
     active=false;stopIdleTimer();recordResult('d');
+    if(gameMode==='daily') recordDailyResult('l');
     achvTrackGameEnd('d',false);
     gtag('event','game_over_draw',{difficulty_level:gtagDiff(),draw_type:'agreement'});
     setTimeout(function(){checkAchievements('draw');},1200);
@@ -1407,7 +1483,9 @@ function offerDraw(){
 
 function resignGame(){
   if(!active) return;
+  if(gameMode==='puzzle'){enterNormalMode();return;}
   active=false;stopIdleTimer();recordResult('l');
+  if(gameMode==='daily') recordDailyResult('l');
   achvTrackGameEnd('l',true);
   gtag('event','game_over_resign',{difficulty_level:gtagDiff()});
   setTimeout(function(){checkAchievements('loss');},1200);
@@ -1421,6 +1499,7 @@ function resignGame(){
 }
 
 function newGame(){
+  if(gameMode!=='normal'){gameMode='normal';puzzleIdx=-1;document.getElementById('mode-banner').style.display='none';document.querySelectorAll('.mode-btn').forEach(function(b,i){b.classList.toggle('active-mode',i===0);});}
   game=new Chess();sel=null;legal=[];mc=0;lastMv=null;active=true;pendingPromo=null;
   achvGameUsedUndo=false;achvGameLostPiece=false;
   stopIdleTimer();resetUsed();
@@ -1639,6 +1718,262 @@ function achvTrackGameEnd(result,wasResign){
   }
   saveAchvMeta(meta);
   checkPersUnlocks();
+}
+
+// ======== DAILY CHALLENGE ========
+var DAILY_FENS=[
+"r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4",
+"r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 6 5",
+"r1b1kb1r/ppppqppp/2n2n2/4p3/2BPP3/2N2N2/PPP2PPP/R1BQK2R w KQkq - 0 6",
+"r2qkb1r/ppp2ppp/2np1n2/4p1B1/2B1P3/2N2N2/PPP2PPP/R2QK2R w KQkq - 0 7",
+"r1bqk2r/ppppbppp/2n2n2/4p3/2BPP3/2N2N2/PPP2PPP/R1BQK2R w KQkq - 0 6",
+"r1bqr1k1/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 8",
+"r2q1rk1/ppp1bppp/2n2n2/3pp1B1/2B1P3/2NP1N2/PPP2PPP/R2Q1RK1 w - - 0 9",
+"rnbq1rk1/ppp1bppp/4pn2/3p4/2PP4/2N1PN2/PP3PPP/R1BQKB1R w KQ - 0 6",
+"r1bq1rk1/pppn1ppp/4pn2/3p4/1bPP4/2NBPN2/PP3PPP/R1BQK2R w KQ - 0 7",
+"r1bq1rk1/pp1nbppp/2p1pn2/3p4/2PP4/1PN1PN2/PB3PPP/R2QKB1R w KQ - 0 8",
+"r2qk2r/pp1nbppp/2p1pn2/3p2B1/2PP4/1QN1PN2/PP3PPP/R3KB1R w KQkq - 0 9",
+"r1bqkb1r/pp3ppp/2nppn2/2p5/2P1P3/2N2N2/PP1P1PPP/R1BQKB1R w KQkq - 0 5",
+"r1b1k2r/ppppqppp/2n2n2/4p3/1bB1P3/2NP1N2/PPP2PPP/R1BQK2R w KQkq - 0 6",
+"rnbqk2r/pp2bppp/2p1pn2/3p4/2PP4/2N2NP1/PP2PP1P/R1BQKB1R w KQkq - 0 6",
+"r2q1rk1/pppbbppp/2n1pn2/3p4/2PP4/2N1PN2/PPB2PPP/R1BQ1RK1 w - - 0 8",
+"r1bqk2r/ppp2ppp/2nb1n2/3pp3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 0 6",
+"r1bq1rk1/pppp1ppp/2n2n2/4p1B1/1bB1P3/2NP1N2/PPP2PPP/R2QK2R w KQ - 0 7",
+"r1bqkbnr/ppp2ppp/2np4/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4",
+"rnbqk2r/pppp1ppp/4pn2/8/1bPP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 4",
+"rnbqkbnr/pp2pppp/2p5/3p4/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 3",
+"r1bqkb1r/pppppppp/2n2n2/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 2 3",
+"rnbqkbnr/pp1ppppp/8/2p5/4P3/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 2",
+"r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+"rnbqkb1r/pppppppp/5n2/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 1 3",
+"r1bqkbnr/pppppppp/2n5/8/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 1 3",
+"rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR w KQkq - 0 3",
+"rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR w KQkq - 0 2",
+"r1bqkb1r/pppp1ppp/2n2n2/4p3/4P3/2N2N2/PPPP1PPP/R1BQKB1R w KQkq - 4 4",
+"rnbqk2r/ppppppbp/5np1/8/2PP4/2N5/PP2PPPP/R1BQKBNR w KQkq - 2 4",
+"rnbqkb1r/ppp1pppp/3p1n2/8/3PP3/2N5/PPP2PPP/R1BQKBNR w KQkq - 0 4"
+];
+
+var DAILY_TAUNTS_START=["Oh it's the daily challenge? Good, I've been waiting to ruin someone's morning.","Everyone else already beat today's challenge by the way. Just you left. No pressure, dipshit.","Daily challenge time! Let's see how today's position exposes your incompetence!","Another day, another chance for me to make you question your life choices. Daily challenge, bitch.","The daily challenge! Where dreams come to die on a predictable schedule!"];
+var DAILY_TAUNTS_WIN=["You beat the daily?! BULLSHIT. I'm filing a formal complaint with the calendar.","Fine. You got today's. But TOMORROW is a different story. Mark my words."];
+var DAILY_TAUNTS_LOSS=["HAHAHA you FAILED the daily! Everyone else won and YOU didn't! Classic!","Daily challenge: FAILED. Come back tomorrow for another serving of humiliation."];
+
+function getDayNum(){return Math.floor(Date.now()/86400000);}
+
+function getDailyData(){
+  try{var d=localStorage.getItem('dissChessDaily');return d?JSON.parse(d):{};}catch(e){return{};}
+}
+function saveDailyData(d){try{localStorage.setItem('dissChessDaily',JSON.stringify(d));}catch(e){}}
+
+function getDailyStreak(){
+  var d=getDailyData(),today=getDayNum(),streak=0;
+  for(var i=0;i<365;i++){
+    var entry=d[today-i];
+    if(entry&&entry.result==='w') streak++;
+    else break;
+  }
+  return streak;
+}
+
+var gameMode='normal';
+var dailyStartMoves=0;
+var puzzleIdx=-1;
+var puzzleSolution=[];
+var puzzleStep=0;
+
+function showDailyModal(){
+  var existing=document.getElementById('daily-modal');if(existing) existing.remove();
+  var dd=getDailyData(),today=getDayNum(),entry=dd[today],streak=getDailyStreak();
+  var dayLabel=Math.abs(today%99999)+1;
+  var html='<div class="daily-modal" id="daily-modal" onclick="if(event.target===this)this.remove()">';
+  html+='<div class="daily-box"><h3>\u{1F4C5} Daily Challenge #'+dayLabel+'</h3>';
+  html+='<div class="streak-display">\u{1F525} '+streak+'</div><div class="streak-label">DAY STREAK</div>';
+  if(entry){
+    if(entry.result==='w'){
+      html+='<div class="daily-status">\u2705 <strong>Completed!</strong><br>You won in '+entry.moves+' moves.</div>';
+      html+='<button class="daily-share" onclick="shareDailyResult()">Share Result \u{1F4CB}</button>';
+    }else{
+      html+='<div class="daily-status">\u274C <strong>Failed</strong><br>Better luck tomorrow, dipshit.</div>';
+      html+='<button class="daily-share" onclick="shareDailyResult()">Share Shame \u{1F4CB}</button>';
+    }
+  }else{
+    html+='<div class="daily-status">Today\'s challenge awaits.<br>Beat Advanced CPU from a set position.</div>';
+    html+='<button class="mode-close" style="border-color:var(--accent2);color:var(--accent2)" onclick="startDailyChallenge()">Play Today\'s Challenge</button>';
+  }
+  html+='<br><button class="mode-close" onclick="document.getElementById(\'daily-modal\').remove()">Close</button>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+
+function startDailyChallenge(){
+  var modal=document.getElementById('daily-modal');if(modal) modal.remove();
+  gameMode='daily';difficulty=2;
+  document.querySelectorAll('.diff-btn').forEach(function(b,i){b.classList.toggle('active',i===2);});
+  var today=getDayNum(),fenIdx=today%DAILY_FENS.length;
+  game=new Chess(DAILY_FENS[fenIdx]);
+  sel=null;legal=[];mc=0;lastMv=null;active=true;pendingPromo=null;
+  achvGameUsedUndo=false;achvGameLostPiece=false;
+  stopIdleTimer();resetUsed();
+  dailyStartMoves=game.history().length;
+  document.getElementById('trash-panel').innerHTML='';
+  document.getElementById('game-over').style.display='none';
+  document.getElementById('go-sub').textContent='';
+  document.getElementById('captured-top').innerHTML='';
+  document.getElementById('captured-bottom').innerHTML='';
+  document.getElementById('move-history').innerHTML='';
+  document.getElementById('mode-banner').style.display='block';
+  document.getElementById('mode-banner').textContent='\u{1F4C5} DAILY CHALLENGE #'+(Math.abs(getDayNum()%99999)+1);
+  document.querySelectorAll('.mode-btn').forEach(function(b,i){b.classList.toggle('active-mode',i===1);});
+  render();updateStatsDisplay();
+  talk(DAILY_TAUNTS_START[Math.floor(Math.random()*DAILY_TAUNTS_START.length)]);
+  startIdleTimer();
+}
+
+function recordDailyResult(result){
+  var dd=getDailyData(),today=getDayNum();
+  if(dd[today]) return;
+  var moves=Math.ceil((game.history().length-dailyStartMoves)/2);
+  dd[today]={result:result,moves:moves};saveDailyData(dd);
+}
+
+function shareDailyResult(){
+  var dd=getDailyData(),today=getDayNum(),entry=dd[today];
+  if(!entry) return;
+  var dayLabel=Math.abs(today%99999)+1;
+  var txt='Diss Chess Daily #'+dayLabel+': '+(entry.result==='w'?'Won in '+entry.moves+' moves \u{1F480}\u265F\uFE0F':'Got destroyed \u{1FA66}\u265F\uFE0F')+'\ndiss-chess.vercel.app';
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){
+      var btns=document.querySelectorAll('.daily-share');
+      btns.forEach(function(b){b.textContent='\u2705 Copied!';setTimeout(function(){b.textContent='Share Result \u{1F4CB}';},2000);});
+    });
+  }
+}
+
+// ======== PUZZLES ========
+var PUZZLES=[
+{fen:"r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",moves:["Qf7"],desc:"Scholar's Mate",hint:"White to move \u2014 Mate in 1"},
+{fen:"r1b1k2r/ppppqppp/2n5/2b1n3/2B1N3/5Q2/PPPP1PPP/RNB1K2R w KQkq - 0 7",moves:["Qf7"],desc:"Queen Fork Mate",hint:"White to move \u2014 Mate in 1"},
+{fen:"6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",moves:["Re8"],desc:"Back Rank Mate",hint:"White to move \u2014 Mate in 1"},
+{fen:"r1bqk2r/pppp1ppp/2n2n2/4N3/2B1P3/8/PPPP1PPP/RNBQK2R w KQkq - 0 4",moves:["Bxf7"],desc:"Fried Liver Attack",hint:"White to move \u2014 Win material"},
+{fen:"4r1k1/ppp2ppp/8/8/8/8/PPP2PPP/4RRK1 w - - 0 1",moves:["Re8"],desc:"Rook Endgame",hint:"White to move \u2014 Mate in 1"},
+{fen:"r2qk2r/ppp2ppp/2n1bn2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w kq - 0 7",moves:["Bxf7","Kf7","Ng5"],desc:"Sacrifice & Fork",hint:"White to move \u2014 Find the combination"},
+{fen:"r1bqk2r/pppp1ppp/2n5/2b1p3/2BnP3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5",moves:["Nxe5"],desc:"Central Strike",hint:"White to move \u2014 Win a pawn"},
+{fen:"rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 0 3",moves:["g5"],desc:"Fool's Mate Trap",hint:"Can you survive?"},
+{fen:"2r3k1/5ppp/8/8/8/8/5PPP/1R4K1 w - - 0 1",moves:["Rb8"],desc:"Back Rank Again",hint:"White to move \u2014 Mate in 1"},
+{fen:"r1b1r1k1/ppp2ppp/2n5/3N4/8/8/PPP2PPP/2KR3R w - - 0 1",moves:["Nf6"],desc:"Knight Fork",hint:"White to move \u2014 Win the exchange"},
+{fen:"6k1/pp3ppp/8/2r5/8/8/PP3PPP/3R2K1 w - - 0 1",moves:["Rd8"],desc:"Back Rank #3",hint:"White to move \u2014 Mate in 1"},
+{fen:"r1bqkbnr/pppppppp/2n5/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 1 2",moves:["d4"],desc:"Center Control",hint:"White to move \u2014 Best opening response"},
+{fen:"rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3",moves:["c4"],desc:"Gambit Play",hint:"White to move \u2014 Hold the pawn"},
+{fen:"r2qr1k1/ppp2ppp/2n5/3Nb3/8/8/PPP2PPP/R2QR1K1 w - - 0 1",moves:["Nf6"],desc:"Fork Master",hint:"White to move \u2014 Win material with a fork"},
+{fen:"5rk1/ppp2ppp/8/8/1b6/2N5/PPP2PPP/R4RK1 w - - 0 1",moves:["Nd5"],desc:"Knight Outpost",hint:"White to move \u2014 Dominate the center"},
+{fen:"3r2k1/pp3ppp/8/2B5/8/8/PPP2PPP/6K1 w - - 0 1",moves:["Bd6"],desc:"Bishops Rule",hint:"White to move \u2014 Win the rook"},
+{fen:"r1bq1rk1/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQ1RK1 w - - 0 7",moves:["Bg5"],desc:"Pin the Knight",hint:"White to move \u2014 Apply pressure"},
+{fen:"r3k2r/ppp2ppp/2n5/3qp3/3P4/2N5/PPP2PPP/R2QK2R w KQkq - 0 10",moves:["dxe5"],desc:"Center Break",hint:"White to move \u2014 Open the position"},
+{fen:"rnb1k2r/pppp1ppp/5n2/4p1q1/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 5",moves:["d4"],desc:"Counter Attack",hint:"White to move \u2014 Strike the center"},
+{fen:"4r1k1/pppq1ppp/2n5/3p4/3P4/2N1B3/PPP2PPP/R2Q1RK1 w - - 0 12",moves:["Nxd5"],desc:"Capture & Conquer",hint:"White to move \u2014 Win the pawn"}
+];
+
+var PUZZLE_CORRECT=["Okay fine you got that one. A fucking monkey with a chess book could've found that. Next.","Lucky guess. That's all that was. A LUCKY. GUESS.","Oh wow you solved a puzzle. Want me to call Mensa? They're going to be SO impressed.","Right answer. Don't get cocky. A stopped clock is right twice a day. You're the clock.","Fine. FINE. You got it. But the next one will DESTROY you.","Yeah yeah, correct. Even a blind squirrel finds a nut. You're the squirrel. The blind one."];
+var PUZZLE_WRONG=["WRONG. It was RIGHT THERE. It was literally gift-wrapped for you and you STILL missed it. Unbelievable. Un-fucking-believable.","INCORRECT! How?! HOW?! The answer was SCREAMING at you from the board!","That's... not it. That's so far from it. You're in a different zip code from the right answer.","NOPE! Wrong! Embarrassingly wrong! I'm dying over here!","Wrong answer, dipshit. Want a hint? The hint is: BE LESS STUPID."];
+
+function getPuzzleData(){
+  try{var d=localStorage.getItem('dissChessPuzzles');return d?JSON.parse(d):{};}catch(e){return{};}
+}
+function savePuzzleData(d){try{localStorage.setItem('dissChessPuzzles',JSON.stringify(d));}catch(e){}}
+
+function showPuzzleModal(){
+  var existing=document.getElementById('puzzle-modal');if(existing) existing.remove();
+  var pd=getPuzzleData(),solved=0;
+  var html='<div class="puzzle-modal" id="puzzle-modal" onclick="if(event.target===this)this.remove()">';
+  html+='<div class="puzzle-box"><h3>\u{1F9E9} Chess Puzzles</h3>';
+  html+='<div class="puzzle-grid">';
+  for(var i=0;i<PUZZLES.length;i++){
+    var isSolved=!!pd[i];if(isSolved) solved++;
+    html+='<div class="puzzle-row'+(isSolved?' solved':'')+'" onclick="startPuzzle('+i+')">';
+    html+='<span class="pz-num">#'+(i+1)+'</span>';
+    html+='<span class="pz-desc">'+PUZZLES[i].desc+' \u2014 <em>'+PUZZLES[i].hint+'</em></span>';
+    html+='<span class="pz-status">'+(isSolved?'\u2705':'\u{1F512}')+'</span>';
+    html+='</div>';
+  }
+  html+='</div><div class="daily-status">Solved: '+solved+'/'+PUZZLES.length+'</div>';
+  html+='<button class="mode-close" onclick="document.getElementById(\'puzzle-modal\').remove()">Close</button>';
+  html+='</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+
+function startPuzzle(idx){
+  var modal=document.getElementById('puzzle-modal');if(modal) modal.remove();
+  gameMode='puzzle';puzzleIdx=idx;
+  var pz=PUZZLES[idx];
+  puzzleSolution=pz.moves.slice();puzzleStep=0;
+  game=new Chess(pz.fen);
+  sel=null;legal=[];mc=0;lastMv=null;active=true;pendingPromo=null;
+  stopIdleTimer();resetUsed();
+  document.getElementById('trash-panel').innerHTML='';
+  document.getElementById('game-over').style.display='none';
+  document.getElementById('go-sub').textContent='';
+  document.getElementById('captured-top').innerHTML='';
+  document.getElementById('captured-bottom').innerHTML='';
+  document.getElementById('move-history').innerHTML='';
+  document.getElementById('mode-banner').style.display='block';
+  document.getElementById('mode-banner').textContent='\u{1F9E9} PUZZLE #'+(idx+1)+' \u2014 '+pz.hint;
+  document.querySelectorAll('.mode-btn').forEach(function(b,i){b.classList.toggle('active-mode',i===2);});
+  render();updateStatsDisplay();
+  document.getElementById('status').textContent=pz.hint;
+  talk("Puzzle time! "+pz.hint+". Let's see if that brain of yours can handle ONE correct move.");
+}
+
+function checkPuzzleMove(mv){
+  if(gameMode!=='puzzle'||puzzleStep>=puzzleSolution.length) return false;
+  var expected=puzzleSolution[puzzleStep];
+  // Check if the move's SAN matches (strip check/mate symbols for comparison)
+  var cleanSan=mv.san.replace(/[+#]/g,'');
+  var cleanExp=expected.replace(/[+#]/g,'');
+  if(cleanSan===cleanExp){
+    puzzleStep++;
+    if(puzzleStep>=puzzleSolution.length){
+      // Puzzle solved!
+      var pd=getPuzzleData();pd[puzzleIdx]={date:new Date().toLocaleDateString()};savePuzzleData(pd);
+      active=false;
+      talk(PUZZLE_CORRECT[Math.floor(Math.random()*PUZZLE_CORRECT.length)]);
+      document.getElementById('status').textContent='\u2705 Puzzle solved!';
+      document.getElementById('go-title').textContent='PUZZLE SOLVED \u{1F9E9}';
+      document.getElementById('go-sub').textContent=PUZZLES[puzzleIdx].desc;
+      document.getElementById('go-msg').textContent='You found the right move. Don\'t let it go to your head.';
+      document.getElementById('game-over').style.display='flex';
+      return true;
+    }else{
+      // More moves needed — auto-play opponent's forced reply then wait for next player move
+      talk("Okay that was right... but you're not done yet.");
+      render();updateMoveHistory();
+      var opMove=puzzleSolution[puzzleStep];
+      setTimeout(function(){
+        var om=game.move(opMove);
+        if(om){
+          puzzleStep++;
+          lastMv=om;render();updateMoveHistory();updateCaptured();
+          if(om.captured) playCaptureAnim(om.to);
+          sndMove();
+          document.getElementById('status').textContent='Your turn \u2014 '+PUZZLES[puzzleIdx].hint;
+        }
+      },600);
+      return true;
+    }
+  }else{
+    // Wrong move — undo it
+    game.undo();
+    talk(PUZZLE_WRONG[Math.floor(Math.random()*PUZZLE_WRONG.length)]);
+    sel=null;legal=[];render();
+    document.getElementById('status').textContent='Wrong! Try again. '+PUZZLES[puzzleIdx].hint;
+    return true;
+  }
+}
+
+function enterNormalMode(){
+  gameMode='normal';puzzleIdx=-1;
+  document.getElementById('mode-banner').style.display='none';
+  document.querySelectorAll('.mode-btn').forEach(function(b,i){b.classList.toggle('active-mode',i===0);});
+  newGame();
 }
 
 // ======== INIT ========
